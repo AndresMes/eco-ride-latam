@@ -11,14 +11,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/api/trips")
+@RequestMapping("/api/v1/trips")
 public class TripController {
 
     private final TripService tripService;
@@ -57,7 +56,7 @@ public class TripController {
         return ResponseEntity.status(HttpStatus.OK).body(tripService.updateTrip(id,dtoRequest));
     }
 
-    @PatchMapping("/{id}")
+    @PatchMapping("/{id}/status")
     public ResponseEntity<TripDtoResponse> updateTripStatus(@PathVariable Long id, @Valid @RequestBody TripDtoUpdateStatus dtoUpdateStatus){
         return ResponseEntity.status(HttpStatus.OK).body(tripService.updateTripStatus(id, dtoUpdateStatus));
     }

@@ -1,5 +1,6 @@
 package edu.unimagdalena.tripservice.exceptions.handler;
 
+import edu.unimagdalena.tripservice.exceptions.TripStatusUpdateNotAllowedException;
 import edu.unimagdalena.tripservice.exceptions.notFound.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -66,6 +67,18 @@ public class GlobalExceptionHandler {
                 .build();
 
         return new ResponseEntity<>(apiError, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(TripStatusUpdateNotAllowedException.class)
+    public ResponseEntity<ApiError> handleTripStatusUpdateNotAllowed(TripStatusUpdateNotAllowedException ex){
+        ApiError apiError = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.CONFLICT.value())
+                .message(ex.getMessage())
+                .errors(null)
+                .build();
+
+        return new ResponseEntity<>(apiError, HttpStatus.CONFLICT);
     }
 
 }

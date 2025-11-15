@@ -5,10 +5,12 @@ import edu.unimagdalena.tripservice.dtos.TripDtoResponse;
 import edu.unimagdalena.tripservice.dtos.TripDtoUpdateStatus;
 import edu.unimagdalena.tripservice.entities.Trip;
 import edu.unimagdalena.tripservice.enums.StatusTrip;
+import edu.unimagdalena.tripservice.exceptions.TripStatusUpdateNotAllowedException;
 import edu.unimagdalena.tripservice.exceptions.notFound.TripNotFoundException;
 import edu.unimagdalena.tripservice.mappers.TripMapper;
 import edu.unimagdalena.tripservice.repositories.TripRepository;
 import edu.unimagdalena.tripservice.services.TripService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -59,6 +61,7 @@ public class TripServiceImpl implements TripService {
 
 
     @Override
+    @Transactional
     public TripDtoResponse createTrip(TripDtoRequest dtoRequest) {
         Trip trip = tripMapper.toEntity(dtoRequest);
         trip.setStatus(StatusTrip.SCHEDULED);
@@ -69,6 +72,7 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
+    @Transactional
     public TripDtoResponse updateTrip(Long id, TripDtoRequest dtoRequest) {
 
         Trip trip = tripRepository.findById(id)
@@ -80,11 +84,17 @@ public class TripServiceImpl implements TripService {
     }
 
     @Override
+    @Transactional
     public TripDtoResponse updateTripStatus(Long id, TripDtoUpdateStatus newStatus) {
 
         Trip trip = tripRepository.findById(id)
                 .orElseThrow(() -> new TripNotFoundException("Trip with ID: "+ id + " not found"));
 
+        if(trip.getStatus().equals(StatusTrip.CANCELLED) || trip.getStatus().equals(StatusTrip.FINISHED)){
+            throw new TripStatusUpdateNotAllowedException(
+                    "Cannot update status of a trip that is already " + trip.getStatus()
+            );
+        }
         trip.setStatus(newStatus.newStatus());
 
         return tripMapper.toDtoResponse(tripRepository.save(trip));
