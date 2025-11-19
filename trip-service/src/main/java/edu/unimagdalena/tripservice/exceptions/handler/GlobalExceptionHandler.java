@@ -1,6 +1,6 @@
 package edu.unimagdalena.tripservice.exceptions.handler;
 
-import edu.unimagdalena.tripservice.exceptions.TripStatusUpdateNotAllowedException;
+import edu.unimagdalena.tripservice.exceptions.*;
 import edu.unimagdalena.tripservice.exceptions.notFound.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -71,6 +71,54 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(TripStatusUpdateNotAllowedException.class)
     public ResponseEntity<ApiError> handleTripStatusUpdateNotAllowed(TripStatusUpdateNotAllowedException ex){
+        ApiError apiError = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.CONFLICT.value())
+                .message(ex.getMessage())
+                .errors(null)
+                .build();
+
+        return new ResponseEntity<>(apiError, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(TripCancelledOrFinishedException.class)
+    public ResponseEntity<ApiError> handleTripCancelledOrFinished(TripCancelledOrFinishedException ex){
+        ApiError apiError = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.CONFLICT.value())
+                .message(ex.getMessage())
+                .errors(null)
+                .build();
+
+        return new ResponseEntity<>(apiError, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(TripFullException.class)
+    public ResponseEntity<ApiError> handleTripFull(TripFullException ex){
+        ApiError apiError = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.CONFLICT.value())
+                .message(ex.getMessage())
+                .errors(null)
+                .build();
+
+        return new ResponseEntity<>(apiError, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(TripInProgressException.class)
+    public ResponseEntity<ApiError> handleTripInProgress(TripInProgressException ex){
+        ApiError apiError = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.CONFLICT.value())
+                .message(ex.getMessage())
+                .errors(null)
+                .build();
+
+        return new ResponseEntity<>(apiError, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(ReservationAlreadyExistsException.class)
+    public ResponseEntity<ApiError> handleReservationAlreadyExists(ReservationAlreadyExistsException ex){
         ApiError apiError = ApiError.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.CONFLICT.value())

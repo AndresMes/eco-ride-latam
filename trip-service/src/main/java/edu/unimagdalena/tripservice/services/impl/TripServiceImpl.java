@@ -1,14 +1,19 @@
 package edu.unimagdalena.tripservice.services.impl;
 
-import edu.unimagdalena.tripservice.dtos.TripDtoRequest;
-import edu.unimagdalena.tripservice.dtos.TripDtoResponse;
-import edu.unimagdalena.tripservice.dtos.TripDtoUpdateStatus;
+import edu.unimagdalena.tripservice.dtos.requests.ReservationDtoRequest;
+import edu.unimagdalena.tripservice.dtos.requests.TripDtoRequest;
+import edu.unimagdalena.tripservice.dtos.responses.ReservationCreatedDtoResponse;
+import edu.unimagdalena.tripservice.dtos.responses.TripDtoResponse;
+import edu.unimagdalena.tripservice.dtos.requests.TripDtoUpdateStatus;
 import edu.unimagdalena.tripservice.entities.Trip;
 import edu.unimagdalena.tripservice.enums.StatusTrip;
+import edu.unimagdalena.tripservice.exceptions.ReservationAlreadyExistsException;
 import edu.unimagdalena.tripservice.exceptions.TripStatusUpdateNotAllowedException;
 import edu.unimagdalena.tripservice.exceptions.notFound.TripNotFoundException;
 import edu.unimagdalena.tripservice.mappers.TripMapper;
+import edu.unimagdalena.tripservice.repositories.ReservationRepository;
 import edu.unimagdalena.tripservice.repositories.TripRepository;
+import edu.unimagdalena.tripservice.services.ReservationService;
 import edu.unimagdalena.tripservice.services.TripService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -23,8 +28,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class TripServiceImpl implements TripService {
 
-    TripRepository tripRepository;
-    TripMapper tripMapper;
+    private final TripRepository tripRepository;
+    private final TripMapper tripMapper;
+    private final ReservationService reservationService;
+    private final ReservationRepository reservationRepository;
 
     @Override
     public TripDtoResponse getTripById(Long id) {
@@ -98,5 +105,23 @@ public class TripServiceImpl implements TripService {
         trip.setStatus(newStatus.newStatus());
 
         return tripMapper.toDtoResponse(tripRepository.save(trip));
+    }
+
+    @Override
+    @Transactional
+    public ReservationCreatedDtoResponse createReservationInTrip(Long tripId, ReservationDtoRequest reservationDtoRequest) {
+
+        Trip trip = tripRepository.findById(tripId)
+                .orElseThrow(() -> new TripNotFoundException("Trip with ID: " + tripId + " not found"));
+
+        trip.reserveSeat();
+
+        if (reservationRepository.existsByTrip_TripIdAndPassengerId(tripId, reservationDtoRequest.passengerId())) {
+            throw new ReservationAlreadyExistsException("Passenger already reserved this trip");
+        }
+
+        return reservationService.createReservation(tripId, reservationDtoRequest);
+
+
     }
 }

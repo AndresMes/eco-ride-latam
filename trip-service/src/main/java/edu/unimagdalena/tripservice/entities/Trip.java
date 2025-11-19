@@ -1,11 +1,11 @@
 package edu.unimagdalena.tripservice.entities;
 
 import edu.unimagdalena.tripservice.enums.StatusTrip;
+import edu.unimagdalena.tripservice.exceptions.TripCancelledOrFinishedException;
+import edu.unimagdalena.tripservice.exceptions.TripFullException;
+import edu.unimagdalena.tripservice.exceptions.TripInProgressException;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -16,6 +16,7 @@ import java.util.List;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 @Table(name = "trips")
 public class Trip {
 
@@ -45,4 +46,32 @@ public class Trip {
 
     @OneToMany(mappedBy = "trip")
     private List<Reservation> reservations;
+
+    public void reserveSeat() {
+        if (status == StatusTrip.CANCELLED || status == StatusTrip.FINISHED) {
+            throw new TripCancelledOrFinishedException("Trip not available for reservations");
+        }
+        if (status == StatusTrip.FULL) {
+            throw new TripFullException("Trip is already full");
+        }
+        if (status == StatusTrip.IN_PROGRESS) {
+            throw new TripInProgressException("Trip is already in progress");
+        }
+        if (seatsAvailable == null || seatsAvailable <= 0) {
+            throw new TripFullException("No seats available");
+        }
+
+        seatsAvailable = seatsAvailable - 1;
+        if (seatsAvailable == 0) {
+            status = StatusTrip.FULL;
+        }
+    }
+
+    public void restoreSeat() {
+        if (seatsAvailable == null) seatsAvailable = 0L;
+        seatsAvailable = seatsAvailable + 1;
+        if (status == StatusTrip.FULL) {
+            status = StatusTrip.SCHEDULED;
+        }
+    }
 }

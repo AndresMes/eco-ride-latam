@@ -1,8 +1,10 @@
 package edu.unimagdalena.tripservice.controllers;
 
-import edu.unimagdalena.tripservice.dtos.TripDtoRequest;
-import edu.unimagdalena.tripservice.dtos.TripDtoResponse;
-import edu.unimagdalena.tripservice.dtos.TripDtoUpdateStatus;
+import edu.unimagdalena.tripservice.dtos.requests.ReservationDtoRequest;
+import edu.unimagdalena.tripservice.dtos.requests.TripDtoRequest;
+import edu.unimagdalena.tripservice.dtos.responses.ReservationCreatedDtoResponse;
+import edu.unimagdalena.tripservice.dtos.responses.TripDtoResponse;
+import edu.unimagdalena.tripservice.dtos.requests.TripDtoUpdateStatus;
 import edu.unimagdalena.tripservice.services.TripService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +51,11 @@ public class TripController {
     @PostMapping
     public ResponseEntity<TripDtoResponse> createTrip(@Valid @RequestBody TripDtoRequest dtoRequest){
         return ResponseEntity.status(HttpStatus.CREATED).body(tripService.createTrip(dtoRequest));
+    }
+
+    @PostMapping("/{tripId}/reservations")
+    public ResponseEntity<ReservationCreatedDtoResponse> createReservationInTrip(@PathVariable Long tripId, @Valid @RequestBody ReservationDtoRequest dto){
+        return ResponseEntity.status(HttpStatus.CREATED).body(tripService.createReservationInTrip(tripId, dto));
     }
 
     @PutMapping("/{id}")
