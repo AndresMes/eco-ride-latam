@@ -73,6 +73,11 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     @Override
+    public boolean existsByTripAndPassengerId(Long tripId, Long passengerId) {
+        return reservationRepository.existsByTrip_TripIdAndPassengerId(tripId, passengerId);
+    }
+
+    @Override
     public void confirmReservation(Long reservationId, String paymentIntentId) {
 
     }

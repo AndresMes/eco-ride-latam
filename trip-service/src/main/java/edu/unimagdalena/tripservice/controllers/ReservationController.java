@@ -4,10 +4,7 @@ import edu.unimagdalena.tripservice.dtos.responses.ReservationDtoResponse;
 import edu.unimagdalena.tripservice.services.ReservationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -31,5 +28,10 @@ public class ReservationController {
     @GetMapping("/trip({tripId}")
     public ResponseEntity<List<ReservationDtoResponse>> getReservationsByTrip(@PathVariable Long tripId){
         return ResponseEntity.ok(reservationService.getReservationsByTrip(tripId));
+    }
+
+    @GetMapping("/exists-by-trip-and-passenger")
+    public ResponseEntity<Boolean> existsByTripAndPassenger(@RequestParam Long tripId, @RequestParam Long passengerId){
+        return ResponseEntity.ok(reservationService.existsByTripAndPassengerId(tripId, passengerId));
     }
 }

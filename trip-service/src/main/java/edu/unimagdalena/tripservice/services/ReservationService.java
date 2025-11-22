@@ -12,6 +12,7 @@ public interface ReservationService {
     ReservationDtoResponse getReservationById(Long reservationId);
     List<ReservationDtoResponse> getReservationsByPassenger(Long passengerId);
     List<ReservationDtoResponse> getReservationsByTrip(Long tripId);
+    boolean existsByTripAndPassengerId(Long tripId, Long passengerId);
     void confirmReservation(Long reservationId, String paymentIntentId);
     void cancelReservation(Long reservationId, String reason);
     boolean checkAvailability(Long tripId);
