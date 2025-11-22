@@ -20,12 +20,12 @@ public class ReservationController {
         return ResponseEntity.ok(reservationService.getReservationById(id));
     }
 
-    @GetMapping("/passanger/{passengerId}")
+    @GetMapping("/passenger/{passengerId}")
     public ResponseEntity<List<ReservationDtoResponse>> getReservationsByPassanger(@PathVariable Long passengerId){
         return ResponseEntity.ok(reservationService.getReservationsByPassenger(passengerId));
     }
 
-    @GetMapping("/trip({tripId}")
+    @GetMapping("/trip/{tripId}")
     public ResponseEntity<List<ReservationDtoResponse>> getReservationsByTrip(@PathVariable Long tripId){
         return ResponseEntity.ok(reservationService.getReservationsByTrip(tripId));
     }

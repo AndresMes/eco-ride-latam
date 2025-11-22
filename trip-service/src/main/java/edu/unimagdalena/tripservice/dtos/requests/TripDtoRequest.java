@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record TripDtoRequest(
-        @NotNull @Positive
+        @NotNull @Positive(message = "driver ID cannot be negative")
         Long driverId,
 
         @NotBlank(message = "Origin cannot be blank")

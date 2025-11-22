@@ -10,14 +10,14 @@ import java.util.List;
 
 public interface TripRepository extends JpaRepository<Trip, Long> {
 
-    @Query("""
-        SELECT t FROM Trip t
-        WHERE 
-            (:origin IS NULL OR LOWER(t.origin) = LOWER(:origin))
-        AND (:destination IS NULL OR LOWER(t.destination) = LOWER(:destination))
-        AND (:from IS NULL OR t.startTime >= :from)
-        AND (:to IS NULL OR t.startTime <= :to)
-    """)
+    @Query(value = """
+    SELECT *
+    FROM trips t
+    WHERE ( CAST(:origin AS text) IS NULL OR t.origin ILIKE CONCAT('%', CAST(:origin AS text), '%') )
+      AND ( CAST(:destination AS text) IS NULL OR t.destination ILIKE CONCAT('%', CAST(:destination AS text), '%') )
+      AND ( CAST(:from AS timestamp) IS NULL OR t.start_time >= CAST(:from AS timestamp) )
+      AND ( CAST(:to AS timestamp) IS NULL OR t.start_time <= CAST(:to AS timestamp) )
+    """, nativeQuery = true)
     List<Trip> searchTrips(
             @Param("origin") String origin,
             @Param("destination") String destination,
