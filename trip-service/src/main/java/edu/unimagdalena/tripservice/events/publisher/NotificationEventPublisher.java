@@ -12,16 +12,15 @@ import org.springframework.stereotype.Component;
 import java.util.UUID;
 
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class NotificationEventPublisher {
 
-    RabbitTemplate rabbitTemplate;
+    private final RabbitTemplate rabbitTemplate;
 
-    @Value("${ecoride.rabbitmq.exchanges.notification=notification.exchange}")
+    @Value("${ecoride.rabbitmq.exchanges.notification}")
     private String notificationExchange;
 
-    @Value(("${ecoride.rabbitmq.routing-keys.notificationConfirmed}"))
+    @Value("${ecoride.rabbitmq.routing-keys.notification-reservationConfirmed}")
     private String reservationConfirmedRoutingKey;
 
     @Value("${ecoride.rabbitmq.routing-keys.notification-reservationCancelled}")
@@ -29,6 +28,10 @@ public class NotificationEventPublisher {
 
     @Value("${ecoride.rabbitmq.routing-keys.trip-completed}")
     private String tripCompletedRoutingKey;
+
+    public NotificationEventPublisher(RabbitTemplate rabbitTemplate) {
+        this.rabbitTemplate = rabbitTemplate;
+    }
 
     public void publishReservationConfirmed(ReservationConfirmedEvent event){
         try{

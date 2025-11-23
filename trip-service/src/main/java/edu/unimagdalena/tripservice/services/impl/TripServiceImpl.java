@@ -17,14 +17,13 @@ import edu.unimagdalena.tripservice.repositories.ReservationRepository;
 import edu.unimagdalena.tripservice.repositories.TripRepository;
 import edu.unimagdalena.tripservice.services.ReservationService;
 import edu.unimagdalena.tripservice.services.TripService;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -37,98 +36,96 @@ public class TripServiceImpl implements TripService {
     private final TripEventPublisher tripEventPublisher;
 
     @Override
-    public TripDtoResponse getTripById(Long id) {
-        Trip trip = tripRepository.findById(id)
-                .orElseThrow(() -> new TripNotFoundException("Trip with ID: " + id + " not found"));
-
-        return tripMapper.toDtoResponse(trip);
+    public Mono<TripDtoResponse> getTripById(Long id) {
+        return tripRepository.findById(id)
+                .switchIfEmpty(Mono.error(new TripNotFoundException("Trip with ID: " + id + " not found")))
+                .map(tripMapper::toDtoResponse);
     }
 
     @Override
-    public List<TripDtoResponse> getAllTrips() {
-        return tripRepository.findAll().stream()
-                .map(tripMapper::toDtoResponse)
-                .toList();
+    public Flux<TripDtoResponse> getAllTrips() {
+        return tripRepository.findAll()
+                .map(tripMapper::toDtoResponse);
     }
 
     @Override
-    public List<TripDtoResponse> searchTrips(Optional<String> origin,
-                                             Optional<String> destination,
-                                             Optional<LocalDateTime> from,
-                                             Optional<LocalDateTime> to) {
-
-        List<Trip> trips = tripRepository.searchTrips(
-                origin.orElse(null),
-                destination.orElse(null),
-                from.orElse(null),
-                to.orElse(null)
-        );
-
-        return trips.stream()
-                .map(tripMapper::toDtoResponse)
-                .collect(Collectors.toList());
-    }
-
-
-    @Override
-    @Transactional
-    public TripDtoResponse createTrip(TripDtoRequest dtoRequest) {
-        Trip trip = tripMapper.toEntity(dtoRequest);
-        trip.setStatus(StatusTrip.SCHEDULED);
-
-        Trip saved =  tripRepository.save(trip);
-
-        return tripMapper.toDtoResponse(saved);
+    public Flux<TripDtoResponse> searchTrips(String origin,
+                                             String destination,
+                                             LocalDateTime from,
+                                             LocalDateTime to) {
+        return tripRepository.searchTrips(origin, destination, from, to)
+                .map(tripMapper::toDtoResponse);
     }
 
     @Override
     @Transactional
-    public TripDtoResponse updateTrip(Long id, TripDtoRequest dtoRequest) {
+    public Mono<TripDtoResponse> createTrip(TripDtoRequest dtoRequest) {
+        Trip tripEntity = tripMapper.toEntity(dtoRequest);
+        tripEntity.setStatus(StatusTrip.SCHEDULED);
 
-        Trip trip = tripRepository.findById(id)
-                .orElseThrow(() -> new TripNotFoundException("Trip with ID: " + id + " not found"));
-
-        tripMapper.updateTripFromDto(dtoRequest, trip);
-
-        return tripMapper.toDtoResponse(tripRepository.save(trip));
+        return tripRepository.save(tripEntity)
+                .map(tripMapper::toDtoResponse);
     }
 
     @Override
     @Transactional
-    public TripDtoResponse updateTripStatus(Long id, TripDtoUpdateStatus newStatus) {
-
-        Trip trip = tripRepository.findById(id)
-                .orElseThrow(() -> new TripNotFoundException("Trip with ID: "+ id + " not found"));
-
-        if(trip.getStatus().equals(StatusTrip.CANCELLED) || trip.getStatus().equals(StatusTrip.FINISHED)){
-            throw new TripStatusUpdateNotAllowedException(
-                    "Cannot update status of a trip that is already " + trip.getStatus()
-            );
-        }
-        trip.setStatus(newStatus.newStatus());
-        Trip saved = tripRepository.save(trip);
-        if(saved.getStatus().equals(StatusTrip.FINISHED)){
-            publishTripCompletedEvent(trip);
-        }
-
-        return tripMapper.toDtoResponse(saved);
+    public Mono<TripDtoResponse> updateTrip(Long id, TripDtoRequest dtoRequest) {
+        return tripRepository.findById(id)
+                .switchIfEmpty(Mono.error(new TripNotFoundException("Trip with ID: " + id + " not found")))
+                .flatMap(trip -> {
+                    tripMapper.updateTripFromDto(dtoRequest, trip);
+                    return tripRepository.save(trip);
+                })
+                .map(tripMapper::toDtoResponse);
     }
 
     @Override
     @Transactional
-    public ReservationCreatedDtoResponse createReservationInTrip(Long tripId, ReservationDtoRequest reservationDtoRequest) {
+    public Mono<TripDtoResponse> updateTripStatus(Long id, TripDtoUpdateStatus newStatus) {
+        return tripRepository.findById(id)
+                .switchIfEmpty(Mono.error(new TripNotFoundException("Trip with ID: " + id + " not found")))
+                .flatMap(trip -> {
+                    if (trip.getStatus().equals(StatusTrip.CANCELLED) || trip.getStatus().equals(StatusTrip.FINISHED)) {
+                        return Mono.error(new TripStatusUpdateNotAllowedException(
+                                "Cannot update status of a trip that is already " + trip.getStatus()
+                        ));
+                    }
 
-        Trip trip = tripRepository.findById(tripId)
-                .orElseThrow(() -> new TripNotFoundException("Trip with ID: " + tripId + " not found"));
+                    trip.setStatus(newStatus.newStatus());
+                    return tripRepository.save(trip)
+                            .flatMap(saved -> {
+                                if (saved.getStatus().equals(StatusTrip.FINISHED)) {
+                                    publishTripCompletedEvent(saved);
+                                }
+                                return Mono.just(saved);
+                            });
+                })
+                .map(tripMapper::toDtoResponse);
+    }
 
-        trip.reserveSeat();
+    @Override
+    @Transactional
+    public Mono<ReservationCreatedDtoResponse> createReservationInTrip(Long tripId, ReservationDtoRequest reservationDtoRequest) {
+        return tripRepository.findById(tripId)
+                .switchIfEmpty(Mono.error(new TripNotFoundException("Trip with ID: " + tripId + " not found")))
+                .flatMap(trip -> {
+                    // Ajusta el estado en la entidad (verifica reglas)
+                    trip.reserveSeat();
 
-        if (reservationRepository.existsByTrip_TripIdAndPassengerId(tripId, reservationDtoRequest.passengerId())) {
-            throw new ReservationAlreadyExistsException("Passenger already reserved this trip");
-        }
-
-        return reservationService.createReservation(tripId, reservationDtoRequest);
-
+                    // Persiste la reducción de asientos antes de crear la reserva
+                    return tripRepository.save(trip)
+                            .flatMap(savedTrip ->
+                                    // Verificamos si el pasajero ya tiene reserva (repos reactivo)
+                                    reservationRepository.existsByTripIdAndPassengerId(tripId, reservationDtoRequest.passengerId())
+                                            .flatMap(exists -> {
+                                                if (Boolean.TRUE.equals(exists)) {
+                                                    return Mono.error(new ReservationAlreadyExistsException("Passenger already reserved this trip"));
+                                                }
+                                                // Llamada al servicio reactivo que crea la reserva
+                                                return reservationService.createReservation(tripId, reservationDtoRequest);
+                                            })
+                            );
+                });
     }
 
     private void publishTripCompletedEvent(Trip trip) {

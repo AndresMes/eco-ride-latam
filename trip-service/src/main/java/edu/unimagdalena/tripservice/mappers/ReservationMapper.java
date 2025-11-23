@@ -10,11 +10,10 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface ReservationMapper {
 
-    @Mapping(target = "tripId", source = "trip.tripId")
+    @Mapping(target = "tripId", source = "tripId")
     ReservationDtoResponse toDtoResponse(Reservation reservation);
 
     ReservationCreatedDtoResponse toCreatedDtoResponse(Reservation reservation);
 
-    @Mapping(target = "trip", ignore = true)
     Reservation toEntity(ReservationDtoRequest dtoRequest);
 }

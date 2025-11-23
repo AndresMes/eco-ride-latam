@@ -19,6 +19,12 @@ public class RabbitMQConfig {
     @Value("${ecoride.rabbitmq.exchanges.payment}")
     private String paymentExchange;
 
+    @Value("${ecoride.rabbitmq.exchanges.trip}")
+    private String tripExchange;
+
+    @Value("${ecoride.rabbitmq.exchanges.notification}")
+    private String notificationExchange;
+
 
     // ============ COLAS ============
 
@@ -31,6 +37,15 @@ public class RabbitMQConfig {
     @Value("${ecoride.rabbitmq.queues.payment-failed}")
     private String paymentFailedQueue;
 
+    @Value("${ecoride.rabbitmq.queues.trip-completed}")
+    private String tripCompletedQueue;
+
+    @Value("${ecoride.rabbitmq.queues.notification-reservationConfirmed}")
+    private String notificationReservationConfirmedQueue;
+
+    @Value("${ecoride.rabbitmq.queues.notification-reservationCancelled}")
+    private String notificationReservationCancelledQueue;
+
 
     // ============ ROUTING KEYS ============
     @Value("${ecoride.rabbitmq.routing-keys.reservation-requested}")
@@ -41,6 +56,15 @@ public class RabbitMQConfig {
 
     @Value("${ecoride.rabbitmq.routing-keys.payment-failed}")
     private String paymentFailedRoutingKey;
+
+    @Value("${ecoride.rabbitmq.routing-keys.trip-completed}")
+    private String tripCompletedRoutingKey;
+
+    @Value("${ecoride.rabbitmq.routing-keys.notification-reservationConfirmed}")
+    private String notificationReservationConfirmedRoutingKey;
+
+    @Value("${ecoride.rabbitmq.routing-keys.notification-reservationCancelled}")
+    private String notificationReservationCancelledRoutingKey;
 
 
     // ============ CONVERTER ============
@@ -67,6 +91,16 @@ public class RabbitMQConfig {
         return new TopicExchange(paymentExchange);
     }
 
+    @Bean
+    public TopicExchange tripExchange() {
+        return new TopicExchange(tripExchange);
+    }
+
+    @Bean
+    public TopicExchange notificationExchange() {
+        return new TopicExchange(notificationExchange);
+    }
+
     // ============ QUEUES ============
 
     // Queue que TripService usa para PUBLICAR eventos de reservación
@@ -88,6 +122,27 @@ public class RabbitMQConfig {
     @Bean
     public Queue paymentFailedQueue() {
         return QueueBuilder.durable(paymentFailedQueue)
+                .withArgument("x-dead-letter-exchange", "dlx.exchange")
+                .build();
+    }
+
+    @Bean
+    public Queue tripCompletedQueue() {
+        return QueueBuilder.durable(tripCompletedQueue)
+                .withArgument("x-dead-letter-exchange", "dlx.exchange")
+                .build();
+    }
+
+    @Bean
+    public Queue notificationReservationConfirmedQueue() {
+        return QueueBuilder.durable(notificationReservationConfirmedQueue)
+                .withArgument("x-dead-letter-exchange", "dlx.exchange")
+                .build();
+    }
+
+    @Bean
+    public Queue notificationReservationCancelledQueue() {
+        return QueueBuilder.durable(notificationReservationCancelledQueue)
                 .withArgument("x-dead-letter-exchange", "dlx.exchange")
                 .build();
     }
@@ -117,6 +172,27 @@ public class RabbitMQConfig {
                 .bind(paymentFailedQueue())
                 .to(paymentExchange())
                 .with(paymentFailedRoutingKey);
+    }
+
+    @Bean
+    public Binding tripCompletedBinding() {
+        return BindingBuilder.bind(tripCompletedQueue())
+                .to(tripExchange())
+                .with(tripCompletedRoutingKey);
+    }
+
+    @Bean
+    public Binding notificationReservationConfirmedBinding() {
+        return BindingBuilder.bind(notificationReservationConfirmedQueue())
+                .to(notificationExchange())
+                .with(notificationReservationConfirmedRoutingKey);
+    }
+
+    @Bean
+    public Binding notificationReservationCancelledBinding() {
+        return BindingBuilder.bind(notificationReservationCancelledQueue())
+                .to(notificationExchange())
+                .with(notificationReservationCancelledRoutingKey);
     }
 
 

@@ -1,33 +1,37 @@
 package edu.unimagdalena.tripservice.entities;
 
 import edu.unimagdalena.tripservice.enums.StatusReservation;
-import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Table;
+import org.springframework.data.relational.core.mapping.Column;
 
 import java.time.LocalDateTime;
 
-@Entity
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Table(name = "reservations")
+@Table("reservations")
 public class Reservation {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
     private Long reservationId;
 
-    @Column(nullable = false)
+    @Column("passenger_id")
     private Long passengerId;
 
-    @Enumerated(EnumType.STRING)
+    /**
+     * Almacenamos el enum como String en la columna "status".
+     * Si tienes problemas, podemos añadir converters personalizados.
+     */
+    @Column("status")
     private StatusReservation status;
 
-    @Column(nullable = false)
+    @Column("created_at")
     private LocalDateTime createdAt;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "trip_id", referencedColumnName = "tripId")
-    private Trip trip;
+    @Column("trip_id")
+    private Long tripId;
 
     public Long getReservationId() {
         return reservationId;
@@ -61,11 +65,11 @@ public class Reservation {
         this.createdAt = createdAt;
     }
 
-    public Trip getTrip() {
-        return trip;
+    public Long getTripId() {
+        return tripId;
     }
 
-    public void setTrip(Trip trip) {
-        this.trip = trip;
+    public void setTripId(Long tripId) {
+        this.tripId = tripId;
     }
 }

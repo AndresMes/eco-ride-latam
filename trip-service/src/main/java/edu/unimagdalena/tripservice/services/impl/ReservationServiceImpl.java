@@ -18,12 +18,13 @@ import edu.unimagdalena.tripservice.mappers.ReservationMapper;
 import edu.unimagdalena.tripservice.repositories.ReservationRepository;
 import edu.unimagdalena.tripservice.repositories.TripRepository;
 import edu.unimagdalena.tripservice.services.ReservationService;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -37,104 +38,105 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     @Transactional
-    public ReservationCreatedDtoResponse createReservation(Long tripId, ReservationDtoRequest dtoRequest) {
-        Trip trip = tripRepository.findById(tripId)
-                .orElseThrow(() -> new TripNotFoundException("Trip with ID: "+tripId+" not found"));
+    public Mono<ReservationCreatedDtoResponse> createReservation(Long tripId, ReservationDtoRequest dtoRequest) {
+        return tripRepository.findById(tripId)
+                .switchIfEmpty(Mono.error(new TripNotFoundException("Trip with ID: " + tripId + " not found")))
+                .flatMap(trip -> {
+                    // TODO: Implement validation of passengerId (same place as original comment)
 
+                    Reservation reservation = reservationMapper.toEntity(dtoRequest);
+                    reservation.setStatus(StatusReservation.PENDING);
+                    reservation.setTripId(trip.getTripId());
+                    reservation.setCreatedAt(LocalDateTime.now());
 
-        /*
-            Implement validation of passengerId
-        */
-
-        Reservation reservation = reservationMapper.toEntity(dtoRequest);
-
-        reservation.setStatus(StatusReservation.PENDING);
-        reservation.setTrip(trip);
-        reservation.setCreatedAt(LocalDateTime.now());
-
-        Reservation saved = reservationRepository.save(reservation);
-
-        publishReservationRequestedEvent(saved, trip);
-
-        return reservationMapper.toCreatedDtoResponse(saved);
-
+                    return reservationRepository.save(reservation)
+                            .doOnSuccess(saved -> publishReservationRequestedEvent(saved, trip))
+                            .map(reservationMapper::toCreatedDtoResponse);
+                });
     }
 
     @Override
-    public ReservationDtoResponse getReservationById(Long reservationId) {
-        Reservation reservation = reservationRepository.findById(reservationId)
-                .orElseThrow(() -> new ReservationNotFoundException("Reservation with ID: " + reservationId + " not found"));
-
-        return reservationMapper.toDtoResponse(reservation);
+    public Mono<ReservationDtoResponse> getReservationById(Long reservationId) {
+        return reservationRepository.findById(reservationId)
+                .switchIfEmpty(Mono.error(new ReservationNotFoundException("Reservation with ID: " + reservationId + " not found")))
+                .map(reservationMapper::toDtoResponse);
     }
 
     @Override
-    public List<ReservationDtoResponse> getReservationsByPassenger(Long passengerId) {
+    public Flux<ReservationDtoResponse> getReservationsByPassenger(Long passengerId) {
         return reservationRepository.findAllByPassengerId(passengerId)
-                .stream()
-                .map(reservationMapper::toDtoResponse)
-                .toList();
+                .map(reservationMapper::toDtoResponse);
     }
 
     @Override
-    public List<ReservationDtoResponse> getReservationsByTrip(Long tripId) {
-        return reservationRepository.findAllByTrip_TripId(tripId)
-                .stream()
-                .map(reservationMapper::toDtoResponse)
-                .toList();
+    public Flux<ReservationDtoResponse> getReservationsByTrip(Long tripId) {
+        return reservationRepository.findAllByTripId(tripId)
+                .map(reservationMapper::toDtoResponse);
     }
 
     @Override
-    public boolean existsByTripAndPassengerId(Long tripId, Long passengerId) {
-        return reservationRepository.existsByTrip_TripIdAndPassengerId(tripId, passengerId);
+    public Mono<Boolean> existsByTripAndPassengerId(Long tripId, Long passengerId) {
+        return reservationRepository.existsByTripIdAndPassengerId(tripId, passengerId);
     }
 
     @Override
     @Transactional
-    public void confirmReservation(Long reservationId, String paymentIntentId) {
+    public Mono<Void> confirmReservation(Long reservationId, String paymentIntentId) {
+        return reservationRepository.findById(reservationId)
+                .switchIfEmpty(Mono.error(new ReservationNotFoundException("Reservation with ID: " + reservationId + " not found")))
+                .flatMap(reservation -> {
+                    if (reservation.getStatus() == StatusReservation.CONFIRMED) {
+                        return Mono.empty();
+                    }
 
-        Reservation reservation = reservationRepository.findById(reservationId)
-                .orElseThrow(() -> new ReservationNotFoundException("Reservation with ID: "+reservationId+ " not found"));
+                    if (!reservation.getStatus().equals(StatusReservation.PENDING)) {
+                        return Mono.error(new ReservationStatusNotAllowedToChangeException(
+                                "Reservation with ID: " + reservationId + " is not PENDING. Current status: " + reservation.getStatus()
+                        ));
+                    }
 
-        if(reservation.getStatus().equals(StatusReservation.CONFIRMED)){
-            return;
-        }
+                    reservation.setStatus(StatusReservation.CONFIRMED);
+                    // Si quieres guardar paymentIntentId, añádelo al DTO/entidad y here setPaymentIntentId(paymentIntentId)
 
-        if(!reservation.getStatus().equals(StatusReservation.PENDING)){
-            throw new ReservationStatusNotAllowedToChangeException("Reservation with ID: " + reservationId +" is not PENDING. Curent status: "+reservation.getStatus());
-        }
-
-        reservation.setStatus(StatusReservation.CONFIRMED);
-        reservationRepository.save(reservation);
-
-        publishReservationConfirmedEvent(reservation);
-
+                    return reservationRepository.save(reservation)
+                            .doOnSuccess(this::publishReservationConfirmedEvent)
+                            .then();
+                });
     }
 
     @Override
     @Transactional
-    public void cancelReservation(Long reservationId, String reason) {
-        Reservation reservation = reservationRepository.findById(reservationId)
-                .orElseThrow(() -> new ReservationNotFoundException("Reservation with ID: "+reservationId+ " not found"));
+    public Mono<Void> cancelReservation(Long reservationId, String reason) {
+        return reservationRepository.findById(reservationId)
+                .switchIfEmpty(Mono.error(new ReservationNotFoundException("Reservation with ID: " + reservationId + " not found")))
+                .flatMap(reservation -> {
+                    if (reservation.getStatus() == StatusReservation.CANCELLED) {
+                        return Mono.empty();
+                    }
 
-        if(reservation.getStatus().equals(StatusReservation.CANCELLED)){
-            return;
-        }
+                    // Cargar el trip por tripId para restaurar asiento
+                    return tripRepository.findById(reservation.getTripId())
+                            .switchIfEmpty(Mono.error(new TripNotFoundException("Trip with ID: " + reservation.getTripId() + " not found")))
+                            .flatMap(trip -> {
+                                trip.restoreSeat();
+                                reservation.setStatus(StatusReservation.CANCELLED);
 
-        Trip trip = reservation.getTrip();
-        trip.restoreSeat();
-
-        reservation.setStatus(StatusReservation.CANCELLED);
-        reservationRepository.save(reservation);
-        tripRepository.save(trip);
-
-        publishReservationCancelledEvent(reservation, reason);
-
+                                // Guardar reserva y luego guardar el trip
+                                return reservationRepository.save(reservation)
+                                        .flatMap(savedRes ->
+                                                tripRepository.save(trip)
+                                                        .doOnSuccess(savedTrip -> publishReservationCancelledEvent(savedRes, reason))
+                                        )
+                                        .then();
+                            });
+                });
     }
 
     @Override
-    public boolean checkAvailability(Long tripId) {
-        return false;
+    public Mono<Boolean> checkAvailability(Long tripId) {
+        return tripRepository.findById(tripId)
+                .map(trip -> trip.getSeatsAvailable() != null && trip.getSeatsAvailable() > 0)
+                .defaultIfEmpty(false);
     }
 
     private void publishReservationRequestedEvent(Reservation reservation, Trip trip) {
@@ -149,7 +151,7 @@ public class ReservationServiceImpl implements ReservationService {
         reservationEventPublisher.publishReservationRequested(event);
     }
 
-    private void publishReservationCancelledEvent(Reservation reservation, String reasonP){
+    private void publishReservationCancelledEvent(Reservation reservation, String reasonP) {
         ReservationCancelledEvent event = ReservationCancelledEvent.builder()
                 .reservationId(reservation.getReservationId())
                 .reason(reasonP)
@@ -159,11 +161,11 @@ public class ReservationServiceImpl implements ReservationService {
         notificationEventPublisher.publishReservationCancelled(event);
     }
 
-    private void publishReservationConfirmedEvent(Reservation reservation){
+    private void publishReservationConfirmedEvent(Reservation reservation) {
         ReservationConfirmedEvent event = ReservationConfirmedEvent.builder()
-                        .reservationId(reservation.getReservationId())
-                                .timestamp(LocalDateTime.now())
-                                        .build();
+                .reservationId(reservation.getReservationId())
+                .timestamp(LocalDateTime.now())
+                .build();
 
         notificationEventPublisher.publishReservationConfirmed(event);
     }

@@ -4,46 +4,47 @@ import edu.unimagdalena.tripservice.enums.StatusTrip;
 import edu.unimagdalena.tripservice.exceptions.TripCancelledOrFinishedException;
 import edu.unimagdalena.tripservice.exceptions.TripFullException;
 import edu.unimagdalena.tripservice.exceptions.TripInProgressException;
-import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Table;
+import org.springframework.data.relational.core.mapping.Column;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 
-@Entity
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Table(name = "trips")
+@Table("trips")
 public class Trip {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @Column("trip_id")
     private Long tripId;
 
-    @Column
+    @Column("driver_id")
     private Long driverId;
 
-    @Column(nullable = false)
+    @Column("origin")
     private String origin;
 
-    @Column(nullable = false)
+    @Column("destination")
     private String destination;
 
-    @Column(nullable = false)
+    @Column("start_time")
     private LocalDateTime startTime;
 
-    @Column(nullable = false)
+    @Column("seats_available")
     private Long seatsAvailable;
 
-    @Column(precision = 10, scale = 2, nullable = false)
+    @Column(value = "price")
     private BigDecimal price;
 
-    @Enumerated(EnumType.STRING)
+    @Column("status")
     private StatusTrip status;
 
-    @OneToMany(mappedBy = "trip")
-    private List<Reservation> reservations;
+    // Nota: No mantenemos la lista de reservations aquí (R2DBC no hace relaciones automáticas).
+    // Si necesitas las reservas en un punto concreto, pídelo al reservationRepository: findAllByTripId(tripId)
 
     public void reserveSeat() {
         if (status == StatusTrip.CANCELLED || status == StatusTrip.FINISHED) {
@@ -135,13 +136,5 @@ public class Trip {
 
     public void setStatus(StatusTrip status) {
         this.status = status;
-    }
-
-    public List<Reservation> getReservations() {
-        return reservations;
-    }
-
-    public void setReservations(List<Reservation> reservations) {
-        this.reservations = reservations;
     }
 }

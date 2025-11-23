@@ -3,17 +3,24 @@ package edu.unimagdalena.tripservice.services;
 import edu.unimagdalena.tripservice.dtos.requests.ReservationDtoRequest;
 import edu.unimagdalena.tripservice.dtos.responses.ReservationCreatedDtoResponse;
 import edu.unimagdalena.tripservice.dtos.responses.ReservationDtoResponse;
-
-import java.util.List;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 public interface ReservationService {
 
-    ReservationCreatedDtoResponse createReservation(Long tripId, ReservationDtoRequest dtoRequest);
-    ReservationDtoResponse getReservationById(Long reservationId);
-    List<ReservationDtoResponse> getReservationsByPassenger(Long passengerId);
-    List<ReservationDtoResponse> getReservationsByTrip(Long tripId);
-    boolean existsByTripAndPassengerId(Long tripId, Long passengerId);
-    void confirmReservation(Long reservationId, String paymentIntentId);
-    void cancelReservation(Long reservationId, String reason);
-    boolean checkAvailability(Long tripId);
+    Mono<ReservationCreatedDtoResponse> createReservation(Long tripId, ReservationDtoRequest dtoRequest);
+
+    Mono<ReservationDtoResponse> getReservationById(Long reservationId);
+
+    Flux<ReservationDtoResponse> getReservationsByPassenger(Long passengerId);
+
+    Flux<ReservationDtoResponse> getReservationsByTrip(Long tripId);
+
+    Mono<Boolean> existsByTripAndPassengerId(Long tripId, Long passengerId);
+
+    Mono<Void> confirmReservation(Long reservationId, String paymentIntentId);
+
+    Mono<Void> cancelReservation(Long reservationId, String reason);
+
+    Mono<Boolean> checkAvailability(Long tripId);
 }
