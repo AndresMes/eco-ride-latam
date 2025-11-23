@@ -129,4 +129,16 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(apiError, HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(ReservationStatusNotAllowedToChangeException.class)
+    public ResponseEntity<ApiError> handleReservationStatusNotAllowedToChange(ReservationStatusNotAllowedToChangeException ex){
+        ApiError apiError = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.CONFLICT.value())
+                .message(ex.getMessage())
+                .errors(null)
+                .build();
+
+        return new ResponseEntity<>(apiError, HttpStatus.CONFLICT);
+    }
+
 }

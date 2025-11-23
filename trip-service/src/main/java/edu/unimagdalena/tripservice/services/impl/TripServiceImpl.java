@@ -7,6 +7,8 @@ import edu.unimagdalena.tripservice.dtos.responses.TripDtoResponse;
 import edu.unimagdalena.tripservice.dtos.requests.TripDtoUpdateStatus;
 import edu.unimagdalena.tripservice.entities.Trip;
 import edu.unimagdalena.tripservice.enums.StatusTrip;
+import edu.unimagdalena.tripservice.events.TripCompletedEvent;
+import edu.unimagdalena.tripservice.events.publisher.TripEventPublisher;
 import edu.unimagdalena.tripservice.exceptions.ReservationAlreadyExistsException;
 import edu.unimagdalena.tripservice.exceptions.TripStatusUpdateNotAllowedException;
 import edu.unimagdalena.tripservice.exceptions.notFound.TripNotFoundException;
@@ -32,6 +34,7 @@ public class TripServiceImpl implements TripService {
     private final TripMapper tripMapper;
     private final ReservationService reservationService;
     private final ReservationRepository reservationRepository;
+    private final TripEventPublisher tripEventPublisher;
 
     @Override
     public TripDtoResponse getTripById(Long id) {
@@ -103,8 +106,12 @@ public class TripServiceImpl implements TripService {
             );
         }
         trip.setStatus(newStatus.newStatus());
+        Trip saved = tripRepository.save(trip);
+        if(saved.getStatus().equals(StatusTrip.FINISHED)){
+            publishTripCompletedEvent(trip);
+        }
 
-        return tripMapper.toDtoResponse(tripRepository.save(trip));
+        return tripMapper.toDtoResponse(saved);
     }
 
     @Override
@@ -122,5 +129,14 @@ public class TripServiceImpl implements TripService {
 
         return reservationService.createReservation(tripId, reservationDtoRequest);
 
+    }
+
+    private void publishTripCompletedEvent(Trip trip) {
+        TripCompletedEvent event = TripCompletedEvent.builder()
+                .tripId(trip.getTripId())
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        tripEventPublisher.publishTripCompleted(event);
     }
 }
