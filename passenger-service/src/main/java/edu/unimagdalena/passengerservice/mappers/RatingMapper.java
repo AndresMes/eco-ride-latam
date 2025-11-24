@@ -10,13 +10,6 @@ import org.mapstruct.Mapping;
 public interface RatingMapper {
 
 
-    @Mapping(target = "fromSub", source = "from.keycloakSub")
-    @Mapping(target = "toId", source = "to.driverId")
     RatingDtoResponse toRatingDtoResponse(Rating rating);
-
-    @Mapping(target = "from", ignore = true)
-    @Mapping(target = "to", ignore = true)
-    @Mapping(target = "ratingId", ignore = true)
-    @Mapping(target = "createdAt", ignore = true)
     Rating toEntity(RatingDtoRequest dtoRequest);
 }

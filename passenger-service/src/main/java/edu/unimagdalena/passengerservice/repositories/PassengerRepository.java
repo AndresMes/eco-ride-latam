@@ -1,10 +1,10 @@
 package edu.unimagdalena.passengerservice.repositories;
 
 import edu.unimagdalena.passengerservice.entities.Passenger;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.r2dbc.repository.R2dbcRepository;
+import reactor.core.publisher.Mono;
 
-import java.util.Optional;
+public interface PassengerRepository extends R2dbcRepository<Passenger, Long> {
 
-public interface PassengerRepository extends JpaRepository<Passenger, Long> {
-    Optional<Passenger> findByKeycloakSub(String keycloakSub);
+    Mono<Passenger> findByKeycloakSub(String keycloakSub);
 }

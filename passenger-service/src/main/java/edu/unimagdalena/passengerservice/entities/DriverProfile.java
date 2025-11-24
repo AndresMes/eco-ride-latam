@@ -1,37 +1,33 @@
 package edu.unimagdalena.passengerservice.entities;
 
 import edu.unimagdalena.passengerservice.enums.VerificationStatus;
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 import lombok.*;
 
-import java.util.List;
-
-@Entity
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Table(name = "driver_profiles")
+@Table("driver_profiles")
 public class DriverProfile {
 
     @Id
+    @Column("driver_id")
     private Long driverId;
 
-    @Column(nullable = false, unique = true)
+    @Column("license_no")
     private String licenseNo;
 
-    @Column(nullable = false)
+    @Column("car_plate")
     private String carPlate;
 
-    @Enumerated(EnumType.STRING)
+    @Column("verification_status")
     private VerificationStatus verificationStatus;
 
-    @OneToOne(optional = false, fetch = FetchType.LAZY)
-    @MapsId
-    @JoinColumn(name = "passenger_id", referencedColumnName = "passengerId")
-    private Passenger passenger;
+    @Column("passenger_id")
+    private Long passengerId;
 
-    @OneToMany(mappedBy = "to", fetch = FetchType.LAZY)
-    private List<Rating> ratings;
 }

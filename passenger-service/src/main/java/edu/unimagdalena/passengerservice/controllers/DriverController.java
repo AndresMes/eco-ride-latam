@@ -7,8 +7,8 @@ import edu.unimagdalena.passengerservice.services.DriverService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
 
 @RestController
 @RequiredArgsConstructor
@@ -18,25 +18,24 @@ public class DriverController {
     private final DriverService driverService;
 
     @PostMapping("/profile")
-    public ResponseEntity<DriverDtoResponse> createDriver(@Valid @RequestBody DriverDtoRequest dto) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(driverService.saveDriver(dto));
+    @ResponseStatus(HttpStatus.CREATED)
+    public Mono<DriverDtoResponse> createDriver(@Valid @RequestBody DriverDtoRequest dto) {
+        return driverService.saveDriver(dto);
     }
 
-    //Cambiar por "me" cuando haya Keycloak
     @GetMapping("/{driverId}")
-    public ResponseEntity<DriverDtoResponse> getDriver(@PathVariable Long driverId) {
-        return ResponseEntity.ok(driverService.findDriverById(driverId));
+    public Mono<DriverDtoResponse> getDriver(@PathVariable Long driverId) {
+        return driverService.findDriverById(driverId);
     }
 
     @PatchMapping("/{driverId}")
-    public ResponseEntity<DriverDtoResponse> updateDriver(@PathVariable Long driverId,
-                                                          @Valid @RequestBody DriverDtoUpdateRequest dto) {
-        return ResponseEntity.ok(driverService.updateDriver(driverId, dto));
+    public Mono<DriverDtoResponse> updateDriver(@PathVariable Long driverId,
+                                                @Valid @RequestBody DriverDtoUpdateRequest dto) {
+        return driverService.updateDriver(driverId, dto);
     }
 
-    //Solo se mantendrá si se añade rol ADMIN
     @PostMapping("/{driverId}/verify")
-    public ResponseEntity<DriverDtoResponse> verifyDriver(@PathVariable Long driverId) {
-        return ResponseEntity.ok(driverService.verifyDriver(driverId));
+    public Mono<DriverDtoResponse> verifyDriver(@PathVariable Long driverId) {
+        return driverService.verifyDriver(driverId);
     }
 }

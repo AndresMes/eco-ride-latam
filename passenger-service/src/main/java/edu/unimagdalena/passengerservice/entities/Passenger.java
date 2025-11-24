@@ -1,41 +1,36 @@
 package edu.unimagdalena.passengerservice.entities;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 import lombok.*;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
-@Entity
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Table(name = "passengers")
+@Table("passengers")
 public class Passenger {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @Column("passenger_id")
     private Long passengerId;
 
-    @Column(name = "keycloak_sub", nullable = false, unique = true)
+    @Column("keycloak_sub")
     private String keycloakSub;
 
-    @Column(nullable = false)
+    @Column("name")
     private String name;
 
-    @Column(nullable = false)
+    @Column("email")
     private String email;
 
-    @Column(name = "rating_avg")
+    @Column("rating_avg")
     private Double ratingAvg;
 
-    @Column
+    @Column("created_at")
     private LocalDateTime createdAt;
-
-    @OneToOne(mappedBy = "passenger", fetch = FetchType.LAZY)
-    private DriverProfile driverProfile;
-
-    @OneToMany(mappedBy = "passenger", fetch = FetchType.LAZY)
-    private List<Rating> ratings;
 }

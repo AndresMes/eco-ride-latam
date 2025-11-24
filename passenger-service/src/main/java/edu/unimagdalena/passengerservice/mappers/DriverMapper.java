@@ -9,10 +9,9 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface DriverMapper {
 
-    @Mapping(target = "passengerId", source = "passenger.passengerId")
+    @Mapping(target = "passengerId", source = "passengerId")
     DriverDtoResponse toDriverDto(DriverProfile driver);
 
-    @Mapping(target = "passenger", ignore = true)
     DriverProfile toEntity(DriverDtoRequest dtoRequest);
 
 

@@ -5,8 +5,6 @@ import edu.unimagdalena.passengerservice.dtos.requests.RatingDtoRequest;
 import edu.unimagdalena.passengerservice.dtos.responses.RatingAvgDtoResponse;
 import edu.unimagdalena.passengerservice.dtos.responses.RatingDtoResponse;
 import edu.unimagdalena.passengerservice.dtos.trip.TripDto;
-import edu.unimagdalena.passengerservice.entities.DriverProfile;
-import edu.unimagdalena.passengerservice.entities.Passenger;
 import edu.unimagdalena.passengerservice.entities.Rating;
 import edu.unimagdalena.passengerservice.exceptions.DuplicateRatingException;
 import edu.unimagdalena.passengerservice.exceptions.ExternalServiceException;
@@ -19,11 +17,12 @@ import edu.unimagdalena.passengerservice.repositories.DriverRepository;
 import edu.unimagdalena.passengerservice.repositories.PassengerRepository;
 import edu.unimagdalena.passengerservice.repositories.RatingRepository;
 import edu.unimagdalena.passengerservice.services.RatingService;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-import java.util.List;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -36,102 +35,100 @@ public class RatingServiceImpl implements RatingService {
     private final TripServiceClient tripClient;
 
     @Override
-    @Transactional
-    public RatingDtoResponse toRateDriver(RatingDtoRequest ratingDtoRequest) {
+    public Mono<RatingDtoResponse> toRateDriver(RatingDtoRequest ratingDtoRequest) {
+        return passengerRepository.findByKeycloakSub(ratingDtoRequest.fromSub())
+                .switchIfEmpty(Mono.error(new PassengerNotFoundException("Passenger not found")))
+                .zipWith(driverRepository.findById(ratingDtoRequest.toId())
+                        .switchIfEmpty(Mono.error(new DriverNotFoundException(
+                                "Driver with ID: " + ratingDtoRequest.toId() + " not found"))))
+                .flatMap(tuple -> {
+                    var passenger = tuple.getT1();
+                    var driver = tuple.getT2();
 
-        Passenger passenger = passengerRepository.findByKeycloakSub(ratingDtoRequest.fromSub())
-                .orElseThrow(() -> new PassengerNotFoundException("Passenger not found"));
+                    if (passenger.getPassengerId().equals(driver.getDriverId())) {
+                        return Mono.error(new UnauthorizedRatingException("Passenger cannot rate themselves"));
+                    }
 
-        DriverProfile driver = driverRepository.findById(ratingDtoRequest.toId())
-                .orElseThrow(() -> new DriverNotFoundException("Driver with ID: "+ratingDtoRequest.toId()+" not found"));
+                    // Validaciones con TripService
+                    return Mono.fromCallable(() -> {
+                                try {
+                                    TripDto trip = tripClient.getTripById(ratingDtoRequest.tripId());
+                                    Boolean hasReservation = tripClient.existsByTripAndPassenger(ratingDtoRequest.tripId(), passenger.getPassengerId());
+                                    return new Object[] { trip, hasReservation };
+                                } catch (feign.FeignException.NotFound ex) {
+                                    throw new InvalidTripException("Trip with ID: " + ratingDtoRequest.tripId() + " not found");
+                                } catch (feign.FeignException ex) {
+                                    throw new ExternalServiceException("Trip service error: " + ex.getMessage());
+                                }
+                            })
+                            .flatMap(result -> {
+                                TripDto trip = (TripDto) result[0];
+                                Boolean hasReservation = (Boolean) result[1];
 
-        if (passenger.getPassengerId().equals(driver.getDriverId())) {
-            throw new UnauthorizedRatingException("Passenger cannot rate themselves");
-        }
+                                if (trip == null) {
+                                    return Mono.error(new InvalidTripException("Trip not found"));
+                                }
 
-        //Validaciones con TripService
-        TripDto trip;
-        Boolean hasReservation;
+                                if (!trip.driverId().equals(ratingDtoRequest.toId())) {
+                                    return Mono.error(new InvalidTripException("Driver does not match the trip's driver"));
+                                }
 
-        try{
-            trip = tripClient.getTripById(ratingDtoRequest.tripId());
-            hasReservation = tripClient.existsByTripAndPassenger(ratingDtoRequest.tripId(), passenger.getPassengerId());
+                                if (hasReservation == null || !hasReservation) {
+                                    return Mono.error(new UnauthorizedRatingException("Passenger did not participate in this trip"));
+                                }
 
-        }catch(feign.FeignException.NotFound ex){
-            throw new InvalidTripException("Trip with ID: "+ratingDtoRequest.tripId()+" not found");
-        }catch(feign.FeignException ex){
-            throw new ExternalServiceException("Trip service error: "+ ex.getMessage());
-        }
+                                if (!"FINISHED".equalsIgnoreCase(trip.status())) {
+                                    return Mono.error(new InvalidTripException("Trip is not finished; rating not allowed"));
+                                }
 
-        if(trip == null){
-            throw new InvalidTripException("Trip not found");
-        }
+                                return ratingRepository.existsByTripIdAndFromId(ratingDtoRequest.tripId(), passenger.getPassengerId())
+                                        .flatMap(exists -> {
+                                            if (exists) {
+                                                return Mono.error(new DuplicateRatingException("You already rated this trip"));
+                                            }
 
-        //Validate driver does match
-        if (!trip.driverId().equals(ratingDtoRequest.toId())) {
-            throw new InvalidTripException("Driver does not match the trip's driver");
-        }
+                                            Rating rating = ratingMapper.toEntity(ratingDtoRequest);
+                                            rating.setFromId(passenger.getPassengerId());
+                                            rating.setToId(driver.getDriverId());
+                                            rating.setCreatedAt(LocalDateTime.now());
 
-        //Validate passenger did participate in the trip
-        if(hasReservation == null || !hasReservation){
-            throw new UnauthorizedRatingException("Passenger did not participate in this trip");
-        }
+                                            if (rating.getComment() != null) {
+                                                String trimmed = rating.getComment().trim();
+                                                if (trimmed.length() > 500) {
+                                                    trimmed = trimmed.substring(0, 500);
+                                                }
+                                                rating.setComment(trimmed);
+                                            }
 
-        //Validate statusTrip is FINISHED
-        if (!"FINISHED".equalsIgnoreCase(trip.status())) {
-            throw new InvalidTripException("Trip is not finished; rating not allowed");
-        }
-
-        //Validate passenger haven't rated yet
-        if (ratingRepository.existsByTripIdAndFrom_PassengerId(
-                ratingDtoRequest.tripId(), passenger.getPassengerId())) {
-            throw new DuplicateRatingException(
-                    "You already rated this trip");
-        }
-
-
-        Rating rating = ratingMapper.toEntity(ratingDtoRequest);
-
-        rating.setFrom(passenger);
-        rating.setTo(driver);
-
-        if (rating.getComment() != null) {
-            String trimmed = rating.getComment().trim();
-            if (trimmed.length() > 500) {
-                trimmed = trimmed.substring(0, 500);
-            }
-            rating.setComment(trimmed);
-        }
-
-        return ratingMapper.toRatingDtoResponse(ratingRepository.save(rating));
-
+                                            return ratingRepository.save(rating);
+                                        });
+                            });
+                })
+                .map(ratingMapper::toRatingDtoResponse);
     }
 
     @Override
-    public List<RatingDtoResponse> findRatingsByDriver(Long driverId) {
-        return ratingRepository.findByTo_DriverId(driverId)
-                .stream()
-                .map(ratingMapper::toRatingDtoResponse)
-                .toList();
+    public Flux<RatingDtoResponse> findRatingsByDriver(Long driverId) {
+        return ratingRepository.findByToId(driverId)
+                .map(ratingMapper::toRatingDtoResponse);
     }
 
     @Override
-    public List<RatingDtoResponse> findRatingsByTrip(Long tripId) {
+    public Flux<RatingDtoResponse> findRatingsByTrip(Long tripId) {
         return ratingRepository.findByTripId(tripId)
-                .stream()
-                .map(ratingMapper::toRatingDtoResponse)
-                .toList();
+                .map(ratingMapper::toRatingDtoResponse);
     }
 
     @Override
-    public RatingAvgDtoResponse calculateRatingDriver(Long driverId) {
-
-        if (!driverRepository.existsById(driverId)) {
-            throw new DriverNotFoundException("Driver with ID: " + driverId + " not found");
-        }
-
-
-        Double rating = ratingRepository.calculateAverageRating(driverId);
-        return new RatingAvgDtoResponse(rating != null ? rating : 0.0);
+    public Mono<RatingAvgDtoResponse> calculateRatingDriver(Long driverId) {
+        return driverRepository.existsById(driverId)
+                .flatMap(exists -> {
+                    if (!exists) {
+                        return Mono.error(new DriverNotFoundException("Driver with ID: " + driverId + " not found"));
+                    }
+                    return ratingRepository.calculateAverageRating(driverId)
+                            .defaultIfEmpty(0.0)
+                            .map(RatingAvgDtoResponse::new);
+                });
     }
 }

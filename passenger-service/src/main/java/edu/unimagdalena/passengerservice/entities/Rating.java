@@ -1,44 +1,40 @@
 package edu.unimagdalena.passengerservice.entities;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 import lombok.*;
 
 import java.time.LocalDateTime;
 
-@Entity
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@Table("rating")
 public class Rating {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column("rating_id")
     private Long ratingId;
 
-    @Column(nullable = false)
+    @Column("score")
     private Integer score;
 
-    @Column(length = 500)
+    @Column("comment")
     private String comment;
 
-    @Column(nullable = false)
+    @Column("trip_id")
     private Long tripId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "from_id", referencedColumnName = "passengerId", nullable = false)
-    private Passenger from;
+    @Column("from_id")
+    private Long fromId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "to_id", referencedColumnName = "driverId", nullable = false)
-    private DriverProfile to;
+    @Column("to_id")
+    private Long toId;
 
-    @Column(nullable = false, updatable = false)
+    @Column("created_at")
     private LocalDateTime createdAt;
 
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-    }
 }
