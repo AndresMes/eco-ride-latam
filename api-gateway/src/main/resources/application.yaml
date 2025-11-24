@@ -4,16 +4,18 @@ server:
 spring:
   application:
     name: api-gateway
+
   # Gateway configuration (básica por ahora)
   cloud:
     gateway:
-      # Habilitar descubrimiento de rutas (se configurará más adelante)
+      # Habilitar descubrimiento de rutas (lo habilitaremos después)
       server:
         webflux:
           discovery:
             locator:
               enabled: false
 
+# Eureka Client Configuration
 eureka:
   instance:
     hostname: localhost
@@ -29,7 +31,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,gateway
   endpoint:
     health:
       show-details: when-authorized
