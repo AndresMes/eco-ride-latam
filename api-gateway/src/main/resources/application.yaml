@@ -4,27 +4,46 @@ server:
 spring:
   application:
     name: api-gateway
-
-  # Gateway configuration (básica por ahora)
   cloud:
+    config:
+      enabled: false
     gateway:
-      # Habilitar descubrimiento de rutas (lo habilitaremos después)
       server:
         webflux:
           discovery:
             locator:
               enabled: false
+              lower-case-service-id: true
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowed-origins: '*'
+                allowed-methods:
+                  - GET
+                  - POST
+                  - PUT
+                  - DELETE
+                  - PATCH
+                  - OPTIONS
+                allowed-headers: '*'
+                allow-credentials: false
+          default-filters: []
+          httpclient:
+            connect-timeout: 5000
+            response-timeout: 10s
 
 # Eureka Client Configuration
 eureka:
   instance:
     hostname: localhost
     instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+    prefer-ip-address: false
   client:
     register-with-eureka: true
     fetch-registry: true
     service-url:
       defaultZone: http://localhost:8761/eureka/
+    registry-fetch-interval-seconds: 5
 
 # Actuator endpoints
 management:
@@ -35,10 +54,14 @@ management:
   endpoint:
     health:
       show-details: when-authorized
+    gateway:
+      access: read_only
 
 # Logging
 logging:
   level:
     root: INFO
     org.springframework.cloud.gateway: DEBUG
+    org.springframework.cloud.loadbalancer: DEBUG
     reactor.netty: INFO
+    org.springframework.web.reactive: DEBUG
