@@ -4,7 +4,6 @@ server:
 spring:
   application:
     name: api-gateway
-
   # Gateway configuration (básica por ahora)
   cloud:
     gateway:
@@ -14,6 +13,16 @@ spring:
           discovery:
             locator:
               enabled: false
+
+eureka:
+  instance:
+    hostname: localhost
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
 
 # Actuator endpoints
 management:
