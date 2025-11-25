@@ -4,10 +4,12 @@ import edu.unimagdalena.passengerservice.dtos.requests.RatingDtoRequest;
 import edu.unimagdalena.passengerservice.dtos.responses.RatingAvgDtoResponse;
 import edu.unimagdalena.passengerservice.dtos.responses.RatingDtoResponse;
 import edu.unimagdalena.passengerservice.services.RatingService;
+import edu.unimagdalena.passengerservice.util.JwtHelper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -22,25 +24,38 @@ public class RatingController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('PASSENGER')")
-    public Mono<RatingDtoResponse> toRateDriver(@Valid @RequestBody RatingDtoRequest dtoRequest){
-        return ratingService.toRateDriver(dtoRequest);
+    public Mono<RatingDtoResponse> toRateDriver(
+            @Valid @RequestBody RatingDtoRequest dtoRequest,
+            Authentication authentication) {
+
+        String keycloakSub = JwtHelper.extractSubject(authentication);
+
+        RatingDtoRequest secureRequest = new RatingDtoRequest(
+                dtoRequest.score(),
+                dtoRequest.comment(),
+                dtoRequest.tripId(),
+                keycloakSub,
+                dtoRequest.toId()
+        );
+
+        return ratingService.toRateDriver(secureRequest);
     }
 
     @GetMapping("/driver/{driverId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'DRIVER')")
-    public Flux<RatingDtoResponse> findRatingsByDriver(@PathVariable Long driverId){
+    public Flux<RatingDtoResponse> findRatingsByDriver(@PathVariable Long driverId) {
         return ratingService.findRatingsByDriver(driverId);
     }
 
     @GetMapping("/trip/{tripId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'DRIVER', 'PASSENGER')")
-    public Flux<RatingDtoResponse> findRatingsByTrip(@PathVariable Long tripId){
+    public Flux<RatingDtoResponse> findRatingsByTrip(@PathVariable Long tripId) {
         return ratingService.findRatingsByTrip(tripId);
     }
 
     @GetMapping("/{driverId}/average")
     @PreAuthorize("hasAnyRole('ADMIN', 'DRIVER', 'PASSENGER')")
-    public Mono<RatingAvgDtoResponse> calculateAverageRating(@PathVariable Long driverId){
+    public Mono<RatingAvgDtoResponse> calculateAverageRating(@PathVariable Long driverId) {
         return ratingService.calculateRatingDriver(driverId);
     }
 }

@@ -15,7 +15,6 @@ public record RatingDtoRequest(
         @Positive(message = "Trip ID must be positive")
         Long tripId,
 
-        @NotBlank(message = "fromSub cannot be blank")
         String fromSub,
 
         @NotNull(message = "to ID cannot be null")
