@@ -92,5 +92,8 @@ logging:
     root: INFO
     org.springframework.cloud.gateway: DEBUG
     org.springframework.cloud.loadbalancer: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.security.oauth2: DEBUG
+    org.springframework.security.web: DEBUG
+    edu.unimagdalena.apigateway.config.KeycloakJwtAuthenticationConverter: DEBUG
     reactor.netty: INFO
-    org.springframework.web.reactive: DEBUG
