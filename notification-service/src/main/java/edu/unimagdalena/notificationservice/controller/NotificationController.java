@@ -1,19 +1,23 @@
 package edu.unimagdalena.notificationservice.controller;
 
 import edu.unimagdalena.notificationservice.dto.NotificationRequest;
+import edu.unimagdalena.notificationservice.service.NotificationService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/notifications")
+@RequestMapping("/notify")
+@RequiredArgsConstructor
 public class NotificationController {
 
+    private final NotificationService notificationService;
+
     @PostMapping
-    public String sendNotification(@RequestBody NotificationRequest request) {
-        System.out.println("=== NOTIFICACIÓN RECIBIDA ===");
-        System.out.println("To: " + request.getTo());
-        System.out.println("Template: " + request.getTemplateCode());
-        System.out.println("Params: " + request.getParams());
-        System.out.println("=============================");
-        return "Notificación recibida correctamente";
+    public ResponseEntity<String> sendNotification(@RequestBody NotificationRequest request) {
+
+        notificationService.sendNotification(request);
+
+        return ResponseEntity.ok("✅ Notification processed successfully");
     }
 }

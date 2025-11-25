@@ -4,38 +4,35 @@ server:
 spring:
   application:
     name: notification-service
-
   cloud:
     config:
       enabled: true
       import-check:
         enabled: false
-
   datasource:
-    url: jdbc:postgresql://localhost:5435/notificationservice
+    url: jdbc:postgresql://localhost:5434/notificationservice
     username: postgres
     password: 123
     driver-class-name: org.postgresql.Driver
 
-  jpa:
-    hibernate:
-      ddl-auto: none
-    properties:
+    jpa:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        ddl-auto: none
+      properties:
+        hibernate:
+          dialect: org.hibernate.dialect.PostgreSQLDialect
 
   flyway:
-    enabled: false
+    enabled: true
     baseline-on-migrate: true
     baseline-version: 1
-
   rabbitmq:
     host: localhost
     port: 5672
     username: guest
     password: guest
 
-# Colas
+# ✅ Tus 3 colas obligatorias (las que dijo tu compañero)
 ecoride:
   rabbitmq:
     queues:
@@ -50,6 +47,7 @@ eureka:
     register-with-eureka: true
     service-url:
       defaultZone: http://localhost:8761/eureka
+
   instance:
     prefer-ip-address: true
 
@@ -57,7 +55,7 @@ management:
   tracing:
     enabled: true
     sampling:
-      probability: 1.0
+      probability: 1.0 # 100% de trazas en dev
   endpoints:
     web:
       exposure:
@@ -65,11 +63,8 @@ management:
   metrics:
     enable:
       all: true
+
   zipkin:
     tracing:
       endpoint: http://localhost:9411/api/v2/spans
 
-logging:
-  level:
-    org.springframework.web: DEBUG
-    org.springframework.http.converter: DEBUG
