@@ -4,44 +4,41 @@ server:
 spring:
   application:
     name: api-gateway
+
   cloud:
     config:
       enabled: false
+
     gateway:
-      server:
-        webflux:
-          discovery:
-            locator:
-              enabled: false
-              lower-case-service-id: true
-          globalcors:
-            cors-configurations:
-              '[/**]':
-                allowed-origins: '*'
-                allowed-methods:
-                  - GET
-                  - POST
-                  - PUT
-                  - DELETE
-                  - PATCH
-                  - OPTIONS
-                allowed-headers: '*'
-                allow-credentials: false
-          default-filters: []
-          httpclient:
-            connect-timeout: 5000
-            response-timeout: 10s
+      discovery:
+        locator:
+          enabled: false
+          lower-case-service-id: true
+
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origins: '*'
+            allowed-methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowed-headers: '*'
+            allow-credentials: false
+
+      httpclient:
+        connect-timeout: 5000
+        response-timeout: 10s
+
       # TokenRelay filter enabled globally
       default-filters:
         - TokenRelay
+
   security:
     oauth2:
-      resourceserver:
-        jwt:
-          # Keycloak issuer URI (realm URL)
-          issuer-uri: http://localhost:9090/realms/ecoride
-          # JWK Set URI for JWT signature verification
-          jwk-set-uri: http://localhost:9090/realms/ecoride/protocol/openid-connect/certs
       client:
         provider:
           keycloak:
@@ -51,19 +48,20 @@ spring:
             user-info-uri: http://localhost:9090/realms/ecoride/protocol/openid-connect/userinfo
             jwk-set-uri: http://localhost:9090/realms/ecoride/protocol/openid-connect/certs
             user-name-attribute: preferred_username
+
         registration:
-          # User authentication (Authorization Code Flow)
           eco-gateway:
             provider: keycloak
             client-id: eco-gateway
             client-secret: pQlnipuGsGAEVwUxdYMCRNJOqvRRdjge
             authorization-grant-type: authorization_code
-            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            # IMPORTANTE: Usa localhost explícitamente
+            redirect-uri: "http://localhost:8080/login/oauth2/code/keycloak"
             scope:
               - openid
               - profile
               - email
-          # Service-to-Service communication (Client Credentials Flow)
+
           eco-internal:
             provider: keycloak
             client-id: eco-gateway
@@ -74,6 +72,11 @@ spring:
               - payment:charge
               - trips:read
               - trips:write
+
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:9090/realms/ecoride
+          jwk-set-uri: http://localhost:9090/realms/ecoride/protocol/openid-connect/certs
 
 # Eureka Client Configuration
 eureka:
@@ -105,9 +108,7 @@ logging:
   level:
     root: INFO
     org.springframework.cloud.gateway: DEBUG
-    org.springframework.cloud.loadbalancer: DEBUG
     org.springframework.security: DEBUG
     org.springframework.security.oauth2: DEBUG
     org.springframework.security.web: DEBUG
-    edu.unimagdalena.apigateway.config.KeycloakJwtAuthenticationConverter: DEBUG
     reactor.netty: INFO
