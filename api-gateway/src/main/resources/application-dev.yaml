@@ -1,0 +1,24 @@
+# Development profile configuration
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Local Keycloak for development
+          issuer-uri: http://localhost:8180/realms/ecoride
+          jwk-set-uri: http://localhost:8180/realms/ecoride/protocol/openid-connect/certs
+
+      client:
+        provider:
+          keycloak:
+            issuer-uri: http://localhost:8180/realms/ecoride
+        registration:
+          eco-gateway:
+            client-id: eco-gateway
+            client-secret: dev-secret-123456 # Dev secret (cambiar en producción)
+
+# More verbose logging in dev
+logging:
+  level:
+    org.springframework.security: TRACE
+    org.springframework.security.oauth2: TRACE
