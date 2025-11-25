@@ -12,18 +12,22 @@ import edu.unimagdalena.passengerservice.mappers.DriverMapper;
 import edu.unimagdalena.passengerservice.repositories.DriverRepository;
 import edu.unimagdalena.passengerservice.repositories.PassengerRepository;
 import edu.unimagdalena.passengerservice.services.DriverService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 @Service
-@RequiredArgsConstructor
 public class DriverServiceImpl implements DriverService {
 
     private final DriverRepository driverRepository;
     private final DriverMapper driverMapper;
     private final PassengerRepository passengerRepository;
+
+    public DriverServiceImpl(DriverRepository driverRepository, DriverMapper driverMapper, PassengerRepository passengerRepository) {
+        this.driverRepository = driverRepository;
+        this.driverMapper = driverMapper;
+        this.passengerRepository = passengerRepository;
+    }
 
     @Override
     public Mono<DriverDtoResponse> findDriverById(Long driverId) {

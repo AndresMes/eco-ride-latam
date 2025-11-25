@@ -63,7 +63,7 @@ public class GlobalExceptionHandler {
         ApiError apiError = ApiError.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                .message("An unexpected error occurred")
+                .message(ex.getMessage())
                 .errors(null)
                 .build();
 
@@ -75,7 +75,7 @@ public class GlobalExceptionHandler {
         ApiError apiError = ApiError.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.BAD_REQUEST.value())
-                .message("An unexpected error occurred")
+                .message(ex.getMessage())
                 .errors(null)
                 .build();
 
@@ -87,7 +87,7 @@ public class GlobalExceptionHandler {
         ApiError apiError = ApiError.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.FORBIDDEN.value())
-                .message("An unexpected error occurred")
+                .message(ex.getMessage())
                 .errors(null)
                 .build();
 
@@ -99,7 +99,7 @@ public class GlobalExceptionHandler {
         ApiError apiError = ApiError.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.CONFLICT.value())
-                .message("An unexpected error occurred")
+                .message(ex.getMessage())
                 .errors(null)
                 .build();
 
@@ -111,7 +111,7 @@ public class GlobalExceptionHandler {
         ApiError apiError = ApiError.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.SERVICE_UNAVAILABLE.value())
-                .message("An unexpected error occurred")
+                .message(ex.getMessage())
                 .errors(null)
                 .build();
 
@@ -123,7 +123,7 @@ public class GlobalExceptionHandler {
         ApiError apiError = ApiError.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.CONFLICT.value())
-                .message("An unexpected error occurred")
+                .message(ex.getMessage())
                 .errors(null)
                 .build();
 
@@ -135,7 +135,7 @@ public class GlobalExceptionHandler {
         ApiError apiError = ApiError.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.CONFLICT.value())
-                .message("An unexpected error occurred")
+                .message(ex.getMessage())
                 .errors(null)
                 .build();
 
@@ -147,7 +147,7 @@ public class GlobalExceptionHandler {
         ApiError apiError = ApiError.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.CONFLICT.value())
-                .message("An unexpected error occurred")
+                .message(ex.getMessage())
                 .errors(null)
                 .build();
 
@@ -159,7 +159,19 @@ public class GlobalExceptionHandler {
         ApiError apiError = ApiError.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.CONFLICT.value())
-                .message("An unexpected error occurred")
+                .message(ex.getMessage())
+                .errors(null)
+                .build();
+
+        return new ResponseEntity<>(apiError, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(PassengerAlreadyExistsException.class)
+    public ResponseEntity<ApiError> handlePassengerAlreadyExistsException(PassengerAlreadyExistsException ex){
+        ApiError apiError = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.CONFLICT.value())
+                .message(ex.getMessage())
                 .errors(null)
                 .build();
 
