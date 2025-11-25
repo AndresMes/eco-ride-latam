@@ -1,0 +1,50 @@
+# ========== DEVELOPMENT PROFILE ==========
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/payment_db
+    username: postgres
+    password: postgres
+
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/ecoride
+          jwk-set-uri: http://localhost:8080/realms/ecoride/protocol/openid-connect/certs
+
+server:
+  port: 8082
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+# ========== LOGGING FOR DEVELOPMENT ==========
+logging:
+  level:
+    root: INFO
+    edu.unimagdalena.paymentservice: DEBUG
+    org.springframework.amqp: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+# ========== DEVELOPMENT SETTINGS ==========
+payment:
+  provider:
+    default: STRIPE_MOCK
+    mock-mode: true
+    mock-failure-rate: 0.1 # 10% de fallos simulados para testing

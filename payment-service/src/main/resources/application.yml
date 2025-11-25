@@ -1,0 +1,143 @@
+spring:
+  application:
+    name: payment-service
+
+  # ========== DATABASE CONFIGURATION ==========
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:payment_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  # ========== JPA CONFIGURATION ==========
+  jpa:
+    hibernate:
+      ddl-auto: validate # Flyway maneja las migraciones
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        use_sql_comments: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+
+  # ========== FLYWAY CONFIGURATION ==========
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    schemas: public
+
+  # ========== RABBITMQ CONFIGURATION ==========
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    listener:
+      simple:
+        acknowledge-mode: auto
+        retry:
+          enabled: true
+          initial-interval: 3000
+          max-attempts: 3
+          multiplier: 2.0
+    template:
+      retry:
+        enabled: true
+        initial-interval: 1000
+        max-attempts: 3
+        multiplier: 2.0
+
+  # ========== SECURITY - OAUTH2 RESOURCE SERVER ==========
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/ecoride}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8080/realms/ecoride/protocol/openid-connect/certs}
+
+# ========== SERVER CONFIGURATION ==========
+server:
+  port: ${PORT:8082}
+  servlet:
+    context-path: /
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# ========== EUREKA CLIENT CONFIGURATION ==========
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER:http://localhost:8761/eureka/}
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${random.value}
+
+# ========== MANAGEMENT & ACTUATOR ==========
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: 1.0
+
+# ========== RABBITMQ CUSTOM CONFIGURATION ==========
+ecoride:
+  rabbitmq:
+    exchange: ecoride.exchange
+    queues:
+      reservation-requested: reservation.requested.queue
+      payment-authorized: payment.authorized.queue
+      payment-failed: payment.failed.queue
+      notification-reservationConfirmed: notification.reservation.confirmed.queue
+      notification-reservationCancelled: notification.reservation.cancelled.queue
+    routing-keys:
+      reservation-requested: reservation.requested
+      payment-authorized: payment.authorized
+      payment-failed: payment.failed
+      notification-reservationConfirmed: notification.reservation.confirmed
+      notification-reservationCancelled: notification.reservation.cancelled
+
+# ========== PAYMENT SERVICE CONFIGURATION ==========
+payment:
+  provider:
+    default: STRIPE_MOCK
+    timeout-seconds: 30
+  retry:
+    max-attempts: 3
+    backoff-ms: 1000
+  idempotency:
+    ttl-hours: 24
+
+# ========== LOGGING CONFIGURATION ==========
+logging:
+  level:
+    root: INFO
+    edu.unimagdalena.paymentservice: DEBUG
+    org.springframework.amqp: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
