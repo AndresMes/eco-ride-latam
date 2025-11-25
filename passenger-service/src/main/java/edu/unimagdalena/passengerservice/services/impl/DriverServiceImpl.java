@@ -12,34 +12,38 @@ import edu.unimagdalena.passengerservice.mappers.DriverMapper;
 import edu.unimagdalena.passengerservice.repositories.DriverRepository;
 import edu.unimagdalena.passengerservice.repositories.PassengerRepository;
 import edu.unimagdalena.passengerservice.services.DriverService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class DriverServiceImpl implements DriverService {
 
     private final DriverRepository driverRepository;
     private final DriverMapper driverMapper;
     private final PassengerRepository passengerRepository;
 
-    public DriverServiceImpl(DriverRepository driverRepository, DriverMapper driverMapper, PassengerRepository passengerRepository) {
-        this.driverRepository = driverRepository;
-        this.driverMapper = driverMapper;
-        this.passengerRepository = passengerRepository;
-    }
-
     @Override
     public Mono<DriverDtoResponse> findDriverById(Long driverId) {
+
         return driverRepository.findById(driverId)
-                .switchIfEmpty(Mono.error(new DriverNotFoundException("Driver with ID: " + driverId + " not found")))
-                .map(driverMapper::toDriverDto);
+                .switchIfEmpty(Mono.error(
+                        new DriverNotFoundException("Driver with ID: " + driverId + " not found")
+                ))
+                .map(driverMapper::toDriverDto)
+                .doOnSuccess(driver -> log.info("Driver found with id: {}", driverId))
+                .doOnError(error -> log.error("Error finding driver by id: {}", driverId, error));
     }
 
     @Override
-    public Mono<DriverDtoResponse> saveDriver(DriverDtoRequest driverDtoRequest) {
+    public Mono<DriverDtoResponse> saveDriver(String keycloakSub, DriverDtoRequest driverDtoRequest) {
+
         if (driverDtoRequest == null) {
-            return Mono.error(new IllegalArgumentException("Request is null"));
+            return Mono.error(new IllegalArgumentException("Request cannot be null"));
         }
 
         String licenseNormalized = driverDtoRequest.licenseNo() != null
@@ -50,20 +54,28 @@ public class DriverServiceImpl implements DriverService {
                 : null;
 
         if (licenseNormalized == null || licenseNormalized.isBlank()) {
-            return Mono.error(new IllegalArgumentException("license cannot be blank"));
+            return Mono.error(new IllegalArgumentException("License cannot be blank"));
         }
         if (plateNormalized == null || plateNormalized.isBlank()) {
-            return Mono.error(new IllegalArgumentException("car plate cannot be blank"));
+            return Mono.error(new IllegalArgumentException("Car plate cannot be blank"));
         }
 
-        return passengerRepository.findById(driverDtoRequest.passengerId())
-                .switchIfEmpty(Mono.error(new PassengerNotFoundException(
-                        "Passenger with ID: " + driverDtoRequest.passengerId() + " not found")))
+        return passengerRepository.findByKeycloakSub(keycloakSub)
+                .switchIfEmpty(Mono.error(
+                        new PassengerNotFoundException(
+                                "Passenger with keycloak sub: " + keycloakSub + " not found. " +
+                                        "Please create a passenger profile first."
+                        )
+                ))
                 .flatMap(passenger ->
                         driverRepository.existsByPassengerId(passenger.getPassengerId())
                                 .flatMap(alreadyDriver -> {
                                     if (alreadyDriver) {
-                                        return Mono.error(new AlreadyADriverException("Passenger already has a driver profile"));
+                                        return Mono.error(
+                                                new AlreadyADriverException(
+                                                        "You already have a driver profile"
+                                                )
+                                        );
                                     }
                                     return Mono.just(passenger);
                                 })
@@ -72,7 +84,9 @@ public class DriverServiceImpl implements DriverService {
                         driverRepository.existsByLicenseNo(licenseNormalized)
                                 .flatMap(licenseExists -> {
                                     if (licenseExists) {
-                                        return Mono.error(new LicenseInUseException("License number already in use"));
+                                        return Mono.error(
+                                                new LicenseInUseException("License number already in use")
+                                        );
                                     }
                                     return Mono.just(passenger);
                                 })
@@ -81,45 +95,80 @@ public class DriverServiceImpl implements DriverService {
                         driverRepository.existsByCarPlate(plateNormalized)
                                 .flatMap(plateExists -> {
                                     if (plateExists) {
-                                        return Mono.error(new CarPlateInUseException("Car plate already in use"));
+                                        return Mono.error(
+                                                new CarPlateInUseException("Car plate already in use")
+                                        );
                                     }
                                     return Mono.just(passenger);
                                 })
                 )
                 .flatMap(passenger -> {
-                    DriverProfile driver = driverMapper.toEntity(driverDtoRequest);
-                    driver.setLicenseNo(licenseNormalized);
-                    driver.setCarPlate(plateNormalized);
-                    driver.setPassengerId(passenger.getPassengerId());
-                    driver.setVerificationStatus(VerificationStatus.PENDING_REVIEW);
-
-                    if (driver.getDriverId() == null && passenger.getPassengerId() != null) {
-                        driver.setDriverId(passenger.getPassengerId());
-                    }
+                    DriverProfile driver = DriverProfile.builder()
+                            .driverId(passenger.getPassengerId())
+                            .licenseNo(licenseNormalized)
+                            .carPlate(plateNormalized)
+                            .passengerId(passenger.getPassengerId())
+                            .verificationStatus(VerificationStatus.PENDING_REVIEW)
+                            .build();
 
                     return driverRepository.save(driver);
                 })
                 .map(driverMapper::toDriverDto)
-                .onErrorMap(DataIntegrityViolationException.class,
-                        ex -> new LicenseInUseException("Conflict saving driver: license or plate may already be in use"));
+                .onErrorMap(DataIntegrityViolationException.class, ex -> {
+                    return new LicenseInUseException(
+                            "Conflict saving driver: license or plate may already be in use"
+                    );
+                });
     }
 
     @Override
-    public Mono<DriverDtoResponse> updateDriver(Long driverId, DriverDtoUpdateRequest dtoRequest) {
+    public Mono<DriverDtoResponse> updateDriver(
+            String keycloakSub,
+            Long driverId,
+            DriverDtoUpdateRequest dtoRequest) {
+
         return driverRepository.findById(driverId)
-                .switchIfEmpty(Mono.error(new DriverNotFoundException("Driver with ID: " + driverId + " not found")))
+                .switchIfEmpty(Mono.error(
+                        new DriverNotFoundException("Driver with ID: " + driverId + " not found")
+                ))
+                .flatMap(driver ->
+                        passengerRepository.findByKeycloakSub(keycloakSub)
+                                .switchIfEmpty(Mono.error(
+                                        new PassengerNotFoundException(
+                                                "Passenger with keycloak sub: " + keycloakSub + " not found"
+                                        )
+                                ))
+                                .flatMap(passenger -> {
+                                    if (!driver.getPassengerId().equals(passenger.getPassengerId())) {
+                                        return Mono.error(
+                                                new UnauthorizedRatingException(
+                                                        "You are not authorized to update this driver profile"
+                                                )
+                                        );
+                                    }
+                                    return Mono.just(driver);
+                                })
+                )
                 .flatMap(driver -> {
-                    String newLicense = dtoRequest.licenseNo() != null ? dtoRequest.licenseNo().trim() : null;
-                    String newPlate = dtoRequest.carPlate() != null ? dtoRequest.carPlate().trim().toUpperCase() : null;
+                    String newLicense = dtoRequest.licenseNo() != null
+                            ? dtoRequest.licenseNo().trim()
+                            : null;
+                    String newPlate = dtoRequest.carPlate() != null
+                            ? dtoRequest.carPlate().trim().toUpperCase()
+                            : null;
 
                     Mono<Boolean> licenseCheck = Mono.just(false);
                     Mono<Boolean> plateCheck = Mono.just(false);
 
-                    if (newLicense != null && !newLicense.isBlank() && !newLicense.equals(driver.getLicenseNo())) {
+                    if (newLicense != null && !newLicense.isBlank()
+                            && !newLicense.equals(driver.getLicenseNo())) {
+
                         licenseCheck = driverRepository.existsByLicenseNoAndDriverIdNot(newLicense, driverId)
                                 .flatMap(exists -> {
                                     if (exists) {
-                                        return Mono.error(new LicenseInUseException("License number is already in use"));
+                                        return Mono.error(
+                                                new LicenseInUseException("License number is already in use")
+                                        );
                                     }
                                     driver.setLicenseNo(newLicense);
                                     driver.setVerificationStatus(VerificationStatus.PENDING_REVIEW);
@@ -127,11 +176,15 @@ public class DriverServiceImpl implements DriverService {
                                 });
                     }
 
-                    if (newPlate != null && !newPlate.isBlank() && !newPlate.equals(driver.getCarPlate())) {
+                    if (newPlate != null && !newPlate.isBlank()
+                            && !newPlate.equals(driver.getCarPlate())) {
+
                         plateCheck = driverRepository.existsByCarPlateAndDriverIdNot(newPlate, driverId)
                                 .flatMap(exists -> {
                                     if (exists) {
-                                        return Mono.error(new CarPlateInUseException("Car plate is already in use"));
+                                        return Mono.error(
+                                                new CarPlateInUseException("Car plate is already in use")
+                                        );
                                     }
                                     driver.setCarPlate(newPlate);
                                     driver.setVerificationStatus(VerificationStatus.PENDING_REVIEW);
@@ -143,36 +196,70 @@ public class DriverServiceImpl implements DriverService {
                             .flatMap(tuple -> {
                                 boolean changed = tuple.getT1() || tuple.getT2();
                                 if (!changed) {
+                                    log.debug("No changes detected for driver {}", driverId);
                                     return Mono.just(driver);
                                 }
                                 return driverRepository.save(driver);
                             });
                 })
                 .map(driverMapper::toDriverDto)
-                .onErrorMap(DataIntegrityViolationException.class,
-                        ex -> new LicenseInUseException("Conflict saving driver: license or plate may already be in use"));
+                .onErrorMap(DataIntegrityViolationException.class, ex -> {
+                    return new LicenseInUseException(
+                            "Conflict saving driver: license or plate may already be in use"
+                    );
+                });
     }
 
     @Override
     public Mono<DriverDtoResponse> verifyDriver(Long driverId) {
+
         return driverRepository.findById(driverId)
-                .switchIfEmpty(Mono.error(new DriverNotFoundException("Driver with ID: " + driverId + " not found")))
+                .switchIfEmpty(Mono.error(
+                        new DriverNotFoundException("Driver with ID: " + driverId + " not found")
+                ))
                 .flatMap(driver -> {
                     if (driver.getVerificationStatus() == VerificationStatus.VERIFIED) {
                         return Mono.just(driver);
                     }
 
-                    if (driver.getVerificationStatus().equals(VerificationStatus.SUSPENDED)) {
-                        return Mono.error(new DriverNotAllowedForVerifyingException("Cannot verified a suspended driver"));
+                    if (driver.getVerificationStatus() == VerificationStatus.SUSPENDED) {
+                        return Mono.error(
+                                new DriverNotAllowedForVerifyingException(
+                                        "Cannot verify a suspended driver"
+                                )
+                        );
                     }
 
-                    if (driver.getVerificationStatus().equals(VerificationStatus.REJECTED)) {
-                        return Mono.error(new DriverNotAllowedForVerifyingException("Cannot verified a rejected driver"));
+                    if (driver.getVerificationStatus() == VerificationStatus.REJECTED) {
+                        return Mono.error(
+                                new DriverNotAllowedForVerifyingException(
+                                        "Cannot verify a rejected driver"
+                                )
+                        );
                     }
 
                     driver.setVerificationStatus(VerificationStatus.VERIFIED);
                     return driverRepository.save(driver);
                 })
+                .map(driverMapper::toDriverDto);
+    }
+
+    @Override
+    public Mono<DriverDtoResponse> findDriverByKeycloakSub(String keycloakSub) {
+        return passengerRepository.findByKeycloakSub(keycloakSub)
+                .switchIfEmpty(Mono.error(
+                        new PassengerNotFoundException(
+                                "Passenger with keycloak sub: " + keycloakSub + " not found"
+                        )
+                ))
+                .flatMap(passenger ->
+                        driverRepository.findById(passenger.getPassengerId())
+                                .switchIfEmpty(Mono.error(
+                                        new DriverNotFoundException(
+                                                "Driver profile not found for this user"
+                                        )
+                                ))
+                )
                 .map(driverMapper::toDriverDto);
     }
 }

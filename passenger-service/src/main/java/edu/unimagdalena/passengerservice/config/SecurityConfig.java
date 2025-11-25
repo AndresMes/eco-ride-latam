@@ -28,7 +28,8 @@ public class SecurityConfig {
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         http
                 .authorizeExchange(exchanges -> exchanges
-                        .pathMatchers("/actuator/**", "/actuator/health/**").permitAll()
+                        .pathMatchers("/actuator/health/**", "/actuator/info").permitAll()
+                        .pathMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .anyExchange().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
@@ -45,48 +46,56 @@ public class SecurityConfig {
         jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(jwt -> {
             Set<String> roles = new HashSet<>();
 
-            Object realmAccessObj = jwt.getClaim("realm_access");
-            if (realmAccessObj instanceof Map) {
-                Map<?,?> realmAccess = (Map<?,?>) realmAccessObj;
+            // 1. Extraer roles del realm (realm_access.roles)
+            Map<String, Object> realmAccess = jwt.getClaim("realm_access");
+            if (realmAccess != null && realmAccess.containsKey("roles")) {
                 Object realmRoles = realmAccess.get("roles");
                 if (realmRoles instanceof Collection) {
-                    ((Collection<?>) realmRoles).forEach(r -> roles.add(String.valueOf(r)));
+                    ((Collection<?>) realmRoles).forEach(role ->
+                            roles.add(String.valueOf(role))
+                    );
                 }
             }
 
-            Object resourceAccessObj = jwt.getClaim("resource_access");
-            if (resourceAccessObj instanceof Map) {
-                Map<?,?> resourceAccess = (Map<?,?>) resourceAccessObj;
-                for (Object clientObj : resourceAccess.values()) {
-                    if (clientObj instanceof Map) {
-                        Object clientRoles = ((Map<?,?>) clientObj).get("roles");
+            // 2. Extraer roles del cliente (resource_access.{client-id}.roles)
+            Map<String, Object> resourceAccess = jwt.getClaim("resource_access");
+            if (resourceAccess != null) {
+                resourceAccess.values().forEach(resource -> {
+                    if (resource instanceof Map) {
+                        Map<?, ?> resourceMap = (Map<?, ?>) resource;
+                        Object clientRoles = resourceMap.get("roles");
                         if (clientRoles instanceof Collection) {
-                            ((Collection<?>) clientRoles).forEach(r -> roles.add(String.valueOf(r)));
+                            ((Collection<?>) clientRoles).forEach(role ->
+                                    roles.add(String.valueOf(role))
+                            );
                         }
                     }
-                }
+                });
             }
 
-            String scopeClaim = jwt.getClaimAsString("scope");
-            if (scopeClaim == null) {
-                Object scp = jwt.getClaim("scp");
-                if (scp instanceof Collection) {
-                    ((Collection<?>) scp).forEach(s -> roles.add("SCOPE_" + String.valueOf(s)));
-                } else if (scp instanceof String) {
-                    for (String s : ((String) scp).split(" ")) roles.add("SCOPE_" + s);
-                }
-            } else {
-                for (String s : scopeClaim.split(" ")) roles.add("SCOPE_" + s);
+            // 3. Extraer roles directos (si existen)
+            List<String> directRoles = jwt.getClaimAsStringList("roles");
+            if (directRoles != null) {
+                roles.addAll(directRoles);
             }
 
+            // 4. Extraer scopes (opcional)
+            String scope = jwt.getClaimAsString("scope");
+            if (scope != null) {
+                Arrays.stream(scope.split(" "))
+                        .forEach(s -> roles.add("SCOPE_" + s));
+            }
+
+            // Convertir a GrantedAuthority
+            // Si el rol ya empieza con "ROLE_", no lo duplicamos
             Collection<GrantedAuthority> authorities = roles.stream()
-                    .map(r -> {
-                        if (r.startsWith("SCOPE_")) {
-                            return new SimpleGrantedAuthority(r);
+                    .map(role -> {
+                        if (role.startsWith("ROLE_")) {
+                            return new SimpleGrantedAuthority(role);
                         }
-                        return new SimpleGrantedAuthority("ROLE_" + r);
+                        return new SimpleGrantedAuthority("ROLE_" + role);
                     })
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toSet());
 
             return authorities;
         });
