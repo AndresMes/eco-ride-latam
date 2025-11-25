@@ -1,4 +1,4 @@
-package edu.unimagdalena.tripservice.dtos;
+package edu.unimagdalena.tripservice.dtos.responses;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

@@ -1,4 +1,4 @@
-package edu.unimagdalena.tripservice.dtos;
+package edu.unimagdalena.tripservice.dtos.requests;
 
 
 import jakarta.validation.constraints.FutureOrPresent;
@@ -8,10 +8,9 @@ import jakarta.validation.constraints.Positive;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 
 public record TripDtoRequest(
-        @NotNull @Positive
+        @NotNull @Positive(message = "driver ID cannot be negative")
         Long driverId,
 
         @NotBlank(message = "Origin cannot be blank")

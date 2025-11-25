@@ -1,36 +1,75 @@
 package edu.unimagdalena.tripservice.entities;
 
 import edu.unimagdalena.tripservice.enums.StatusReservation;
-import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Table;
+import org.springframework.data.relational.core.mapping.Column;
 
 import java.time.LocalDateTime;
 
-@Entity
-@Setter
-@Getter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "reservations")
+@Builder
+@Table("reservations")
 public class Reservation {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
     private Long reservationId;
 
-    @Column(nullable = false)
+    @Column("passenger_id")
     private Long passengerId;
 
-    @Enumerated(EnumType.STRING)
+    /**
+     * Almacenamos el enum como String en la columna "status".
+     * Si tienes problemas, podemos añadir converters personalizados.
+     */
+    @Column("status")
     private StatusReservation status;
 
-    @Column(nullable = false)
+    @Column("created_at")
     private LocalDateTime createdAt;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "trip_id", referencedColumnName = "tripId")
-    private Trip trip;
+    @Column("trip_id")
+    private Long tripId;
 
+    public Long getReservationId() {
+        return reservationId;
+    }
+
+    public void setReservationId(Long reservationId) {
+        this.reservationId = reservationId;
+    }
+
+    public Long getPassengerId() {
+        return passengerId;
+    }
+
+    public void setPassengerId(Long passengerId) {
+        this.passengerId = passengerId;
+    }
+
+    public StatusReservation getStatus() {
+        return status;
+    }
+
+    public void setStatus(StatusReservation status) {
+        this.status = status;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Long getTripId() {
+        return tripId;
+    }
+
+    public void setTripId(Long tripId) {
+        this.tripId = tripId;
+    }
 }

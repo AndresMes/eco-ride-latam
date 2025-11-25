@@ -1,27 +1,24 @@
 package edu.unimagdalena.tripservice.repositories;
 
-import org.springframework.data.jpa.repository.JpaRepository;
 import edu.unimagdalena.tripservice.entities.Trip;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.r2dbc.repository.Query;
+import org.springframework.data.repository.reactive.ReactiveCrudRepository;
+import reactor.core.publisher.Flux;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
-public interface TripRepository extends JpaRepository<Trip, Long> {
+public interface TripRepository extends ReactiveCrudRepository<Trip, Long> {
 
     @Query("""
-        SELECT t FROM Trip t
-        WHERE 
-            (:origin IS NULL OR LOWER(t.origin) = LOWER(:origin))
-        AND (:destination IS NULL OR LOWER(t.destination) = LOWER(:destination))
-        AND (:from IS NULL OR t.startTime >= :from)
-        AND (:to IS NULL OR t.startTime <= :to)
-    """)
-    List<Trip> searchTrips(
-            @Param("origin") String origin,
-            @Param("destination") String destination,
-            @Param("from") LocalDateTime from,
-            @Param("to") LocalDateTime to
-    );
+    SELECT *
+    FROM trips t
+    WHERE (:origin IS NULL OR t.origin ILIKE CONCAT('%', :origin, '%'))
+      AND (:destination IS NULL OR t.destination ILIKE CONCAT('%', :destination, '%'))
+      AND (:from IS NULL OR t.start_time >= :from)
+      AND (:to IS NULL OR t.start_time <= :to)
+""")
+    Flux<Trip> searchTrips(String origin,
+                           String destination,
+                           LocalDateTime from,
+                           LocalDateTime to);
 }

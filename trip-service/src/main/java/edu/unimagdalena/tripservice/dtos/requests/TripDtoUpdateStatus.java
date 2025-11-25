@@ -1,4 +1,4 @@
-package edu.unimagdalena.tripservice.dtos;
+package edu.unimagdalena.tripservice.dtos.requests;
 
 import edu.unimagdalena.tripservice.enums.StatusTrip;
 import jakarta.validation.constraints.NotNull;
