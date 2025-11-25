@@ -31,7 +31,9 @@ spring:
           httpclient:
             connect-timeout: 5000
             response-timeout: 10s
-      default-filters: TokenRelay
+      # TokenRelay filter enabled globally
+      default-filters:
+        - TokenRelay
   security:
     oauth2:
       resourceserver:
@@ -50,6 +52,7 @@ spring:
             jwk-set-uri: http://localhost:9090/realms/ecoride/protocol/openid-connect/certs
             user-name-attribute: preferred_username
         registration:
+          # User authentication (Authorization Code Flow)
           eco-gateway:
             provider: keycloak
             client-id: eco-gateway
@@ -60,6 +63,17 @@ spring:
               - openid
               - profile
               - email
+          # Service-to-Service communication (Client Credentials Flow)
+          eco-internal:
+            provider: keycloak
+            client-id: eco-gateway
+            client-secret: pQlnipuGsGAEVwUxdYMCRNJOqvRRdjge
+            authorization-grant-type: client_credentials
+            scope:
+              - notification:send
+              - payment:charge
+              - trips:read
+              - trips:write
 
 # Eureka Client Configuration
 eureka:
