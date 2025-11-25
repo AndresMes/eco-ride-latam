@@ -7,4 +7,5 @@ import reactor.core.publisher.Mono;
 public interface PassengerRepository extends R2dbcRepository<Passenger, Long> {
 
     Mono<Passenger> findByKeycloakSub(String keycloakSub);
+    Mono<Passenger> findByPassengerId(Long passengerId);
 }

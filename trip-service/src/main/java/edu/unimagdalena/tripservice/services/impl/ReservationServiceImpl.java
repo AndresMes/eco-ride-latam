@@ -114,14 +114,12 @@ public class ReservationServiceImpl implements ReservationService {
                         return Mono.empty();
                     }
 
-                    // Cargar el trip por tripId para restaurar asiento
                     return tripRepository.findById(reservation.getTripId())
                             .switchIfEmpty(Mono.error(new TripNotFoundException("Trip with ID: " + reservation.getTripId() + " not found")))
                             .flatMap(trip -> {
                                 trip.restoreSeat();
                                 reservation.setStatus(StatusReservation.CANCELLED);
 
-                                // Guardar reserva y luego guardar el trip
                                 return reservationRepository.save(reservation)
                                         .flatMap(savedRes ->
                                                 tripRepository.save(trip)

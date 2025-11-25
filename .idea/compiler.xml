@@ -32,6 +32,7 @@
         </processorPath>
         <module name="passenger-service" />
         <module name="api-gateway" />
+        <module name="notification-service" />
       </profile>
     </annotationProcessing>
   </component>
@@ -39,6 +40,7 @@
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="api-gateway" options="-parameters" />
       <module name="eureka-server" options="-parameters" />
+      <module name="notification-service" options="-parameters" />
       <module name="passenger-service" options="-parameters" />
       <module name="trip-service" options="-parameters" />
     </option>

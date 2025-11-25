@@ -109,19 +109,16 @@ public class TripServiceImpl implements TripService {
         return tripRepository.findById(tripId)
                 .switchIfEmpty(Mono.error(new TripNotFoundException("Trip with ID: " + tripId + " not found")))
                 .flatMap(trip -> {
-                    // Ajusta el estado en la entidad (verifica reglas)
+
                     trip.reserveSeat();
 
-                    // Persiste la reducción de asientos antes de crear la reserva
                     return tripRepository.save(trip)
                             .flatMap(savedTrip ->
-                                    // Verificamos si el pasajero ya tiene reserva (repos reactivo)
                                     reservationRepository.existsByTripIdAndPassengerId(tripId, reservationDtoRequest.passengerId())
                                             .flatMap(exists -> {
                                                 if (Boolean.TRUE.equals(exists)) {
                                                     return Mono.error(new ReservationAlreadyExistsException("Passenger already reserved this trip"));
                                                 }
-                                                // Llamada al servicio reactivo que crea la reserva
                                                 return reservationService.createReservation(tripId, reservationDtoRequest);
                                             })
                             );
