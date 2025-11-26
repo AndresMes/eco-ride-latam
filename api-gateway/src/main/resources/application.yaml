@@ -10,32 +10,31 @@ spring:
       enabled: false
 
     gateway:
-      discovery:
-        locator:
-          enabled: false
-          lower-case-service-id: true
-
-      globalcors:
-        cors-configurations:
-          '[/**]':
-            allowed-origins: '*'
-            allowed-methods:
-              - GET
-              - POST
-              - PUT
-              - DELETE
-              - PATCH
-              - OPTIONS
-            allowed-headers: '*'
-            allow-credentials: false
-
-      httpclient:
-        connect-timeout: 5000
-        response-timeout: 10s
-
       # TokenRelay filter enabled globally
-      default-filters:
-        - TokenRelay
+      server:
+        webflux:
+          discovery:
+            locator:
+              enabled: false
+              lower-case-service-id: true
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                          allowed-origins: '*'
+                          allowed-methods:
+                            - GET
+                            - POST
+                            - PUT
+                            - DELETE
+                            - PATCH
+                            - OPTIONS
+                          allowed-headers: '*'
+                          allow-credentials: false
+          default-filters:
+            - TokenRelay
+          httpclient:
+            connect-timeout: 5000
+            response-timeout: 10s
 
   security:
     oauth2:
@@ -56,7 +55,7 @@ spring:
             client-secret: pQlnipuGsGAEVwUxdYMCRNJOqvRRdjge
             authorization-grant-type: authorization_code
             # IMPORTANTE: Usa localhost explícitamente
-            redirect-uri: "http://localhost:8080/login/oauth2/code/keycloak"
+            redirect-uri: "http://localhost:8080/login/oauth2/code/eco-gateway"
             scope:
               - openid
               - profile
