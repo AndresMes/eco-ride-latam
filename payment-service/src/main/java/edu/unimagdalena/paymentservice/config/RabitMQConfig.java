@@ -27,6 +27,13 @@ public class RabitMQConfig {
     @Value("${ecoride.rabbitmq.queues.payment-failed}")
     private String paymentFailedQueue;
 
+    // 🔔 Queues para NotificationService
+    @Value("${ecoride.rabbitmq.queues.notification-payment-authorized}")
+    private String notificationPaymentAuthorizedQueue;
+
+    @Value("${ecoride.rabbitmq.queues.notification-payment-failed}")
+    private String notificationPaymentFailedQueue;
+
     @Value("${ecoride.rabbitmq.routing-keys.reservation-requested}")
     private String reservationRequestedRoutingKey;
 
@@ -35,6 +42,13 @@ public class RabitMQConfig {
 
     @Value("${ecoride.rabbitmq.routing-keys.payment-failed}")
     private String paymentFailedRoutingKey;
+
+    // 🔔 Routing Keys para NotificationService
+    @Value("${ecoride.rabbitmq.routing-keys.notification-payment-authorized}")
+    private String notificationPaymentAuthorizedRoutingKey;
+
+    @Value("${ecoride.rabbitmq.routing-keys.notification-payment-failed}")
+    private String notificationPaymentFailedRoutingKey;
 
     @Bean
     public MessageConverter messageConverter() {
@@ -81,6 +95,21 @@ public class RabitMQConfig {
                 .build();
     }
 
+    // 🔔 Queues que Payment publica a NotificationService
+    @Bean
+    public Queue notificationPaymentAuthorizedQueue() {
+        return QueueBuilder.durable(notificationPaymentAuthorizedQueue)
+                .withArgument("x-dead-letter-exchange", "dlx.exchange")
+                .build();
+    }
+
+    @Bean
+    public Queue notificationPaymentFailedQueue() {
+        return QueueBuilder.durable(notificationPaymentFailedQueue)
+                .withArgument("x-dead-letter-exchange", "dlx.exchange")
+                .build();
+    }
+
     @Bean
     public Binding reservationRequestedBinding() {
         return BindingBuilder
@@ -103,5 +132,22 @@ public class RabitMQConfig {
                 .bind(paymentFailedQueue())
                 .to(paymentExchange())
                 .with(paymentFailedRoutingKey);
+    }
+
+    // 🔔 Bindings para NotificationService
+    @Bean
+    public Binding notificationPaymentAuthorizedBinding() {
+        return BindingBuilder
+                .bind(notificationPaymentAuthorizedQueue())
+                .to(paymentExchange())
+                .with(notificationPaymentAuthorizedRoutingKey);
+    }
+
+    @Bean
+    public Binding notificationPaymentFailedBinding() {
+        return BindingBuilder
+                .bind(notificationPaymentFailedQueue())
+                .to(paymentExchange())
+                .with(notificationPaymentFailedRoutingKey);
     }
 }
