@@ -7,6 +7,9 @@ spring:
       host: localhost
       port: 6379
       timeout: 2000ms
+      # Configuración adicional para debugging
+      connect-timeout: 5000ms
+
   application:
     name: api-gateway
 
@@ -15,7 +18,6 @@ spring:
       enabled: false
 
     gateway:
-      # TokenRelay filter enabled globally
       server:
         webflux:
           discovery:
@@ -25,23 +27,16 @@ spring:
           globalcors:
             cors-configurations:
               '[/**]':
-                          allowed-origins: '*'
-                          allowed-methods:
-                            - GET
-                            - POST
-                            - PUT
-                            - DELETE
-                            - PATCH
-                            - OPTIONS
-                          allowed-headers: '*'
-                          allow-credentials: false
-          default-filters:
-            - TokenRelay
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
-                key-resolver: "#{@ipKeyResolver}"
+                allowed-origins: '*'
+                allowed-methods:
+                  - GET
+                  - POST
+                  - PUT
+                  - DELETE
+                  - PATCH
+                  - OPTIONS
+                allowed-headers: '*'
+                allow-credentials: false
           httpclient:
             connect-timeout: 3000
             response-timeout: 5s
@@ -64,7 +59,6 @@ spring:
             client-id: eco-gateway
             client-secret: pQlnipuGsGAEVwUxdYMCRNJOqvRRdjge
             authorization-grant-type: authorization_code
-            # IMPORTANTE: Usa localhost explícitamente
             redirect-uri: "http://localhost:8080/login/oauth2/code/eco-gateway"
             scope:
               - openid
@@ -87,7 +81,6 @@ spring:
           issuer-uri: http://localhost:9090/realms/ecoride
           jwk-set-uri: http://localhost:9090/realms/ecoride/protocol/openid-connect/certs
 
-# Eureka Client Configuration
 eureka:
   instance:
     hostname: localhost
@@ -100,7 +93,6 @@ eureka:
       defaultZone: http://localhost:8761/eureka/
     registry-fetch-interval-seconds: 5
 
-# Actuator endpoints
 management:
   endpoints:
     web:
@@ -112,7 +104,6 @@ management:
     gateway:
       access: read_only
 
-# Logging
 logging:
   level:
     root: INFO
@@ -122,9 +113,10 @@ logging:
     org.springframework.security.web: DEBUG
     reactor.netty: INFO
     io.github.resilience4j.circuitbreaker: DEBUG
+    # IMPORTANTE: Activar logs de rate limiter
     org.springframework.cloud.gateway.filter.ratelimit: DEBUG
+    org.springframework.data.redis: DEBUG
 
-#Resilience4j
 resilience4j:
   timelimiter:
     configs:
@@ -138,24 +130,18 @@ resilience4j:
         base-config: default
       payment-service:
         timeout-duration: 10s
-      notification-duration:
+      notification-service:
         timeout-duration: 3s
 
   circuitbreaker:
     configs:
       default:
-        # Umbral de fallo para abrir el circuito
         failure-rate-threshold: 50
-        # Llamadas mínimas antes de calcular failure rate
         minimum-number-of-calls: 10
-        # Número de llamadas en estado HALF_OPEN
         permitted-number-of-calls-in-half-open-state: 5
-        # Tiempo en OPEN antes de ir a HALF_OPEN
         wait-duration-in-open-state: 10s
-        # Tamaño de sliding window
         sliding-window-size: 10
         sliding-window-type: COUNT_BASED
-        # Registrar eventos
         register-health-indicator: true
     instances:
       trip-service:
@@ -166,6 +152,3 @@ resilience4j:
         base-config: default
       notification-service:
         base-config: default
-
-
-
