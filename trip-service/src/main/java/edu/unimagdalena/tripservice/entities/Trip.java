@@ -43,9 +43,6 @@ public class Trip {
     @Column("status")
     private StatusTrip status;
 
-    // Nota: No mantenemos la lista de reservations aquí (R2DBC no hace relaciones automáticas).
-    // Si necesitas las reservas en un punto concreto, pídelo al reservationRepository: findAllByTripId(tripId)
-
     public void reserveSeat() {
         if (status == StatusTrip.CANCELLED || status == StatusTrip.FINISHED) {
             throw new TripCancelledOrFinishedException("Trip not available for reservations");
