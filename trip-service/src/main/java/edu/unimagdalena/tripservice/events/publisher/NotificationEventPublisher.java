@@ -3,7 +3,6 @@ package edu.unimagdalena.tripservice.events.publisher;
 import edu.unimagdalena.tripservice.events.ReservationCancelledEvent;
 import edu.unimagdalena.tripservice.events.ReservationConfirmedEvent;
 import edu.unimagdalena.tripservice.events.TripCompletedEvent;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
