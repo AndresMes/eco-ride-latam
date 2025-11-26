@@ -12,10 +12,10 @@
     </parent>
 
     <groupId>edu.unimagdalena</groupId>
-    <artifactId>trip-service</artifactId>
+    <artifactId>payment-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>trip-service</name>
-    <description>trip-service</description>
+    <name>payment-service</name>
+    <description>payment-service</description>
 
     <properties>
         <java.version>17</java.version>
