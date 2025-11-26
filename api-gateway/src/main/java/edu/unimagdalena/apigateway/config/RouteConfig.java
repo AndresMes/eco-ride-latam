@@ -109,6 +109,26 @@ public class RouteConfig {
                         .uri("lb://TRIP-SERVICE")
                 )
 
+                .route("reservation-service-route", r -> r
+                        .path("/api/reservations/**")
+                        .and()
+                        .method("GET", "POST", "PUT", "DELETE", "PATCH")
+                        .filters(f -> f
+                                .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
+                                .addRequestHeader("X-Request-Source", "api-gateway")
+                                .addResponseHeader("X-Gateway", "eco-ride")
+                                .circuitBreaker(c -> c
+                                        .setName("trip-service")
+                                        .setFallbackUri("forward:/fallback/trip-service")
+                                )
+                                .tokenRelay()
+                                .requestRateLimiter(config -> config
+                                        .setRateLimiter(redisRateLimiter)
+                                )
+                        )
+                        .uri("lb://TRIP-SERVICE")
+                )
+
                 // ==================== PAYMENT SERVICE (Rate Limit Estricto) ====================
                 .route("payment-service-route", r -> r
                         .path("/api/payments/**")

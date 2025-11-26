@@ -45,7 +45,7 @@ public class ReservationServiceImpl implements ReservationService {
         return tripRepository.findById(tripId)
                 .switchIfEmpty(Mono.error(new TripNotFoundException("Trip with ID: " + tripId + " not found")))
                 .flatMap(trip ->
-                        passengerClient.findPassengerById(dtoRequest.passengerId().toString(), authorizationHeader)
+                        passengerClient.findPassengerById(dtoRequest.passengerId(), authorizationHeader)
                                 .then(Mono.defer(() -> {
                                     Reservation reservation = reservationMapper.toEntity(dtoRequest);
                                     reservation.setStatus(StatusReservation.PENDING);
