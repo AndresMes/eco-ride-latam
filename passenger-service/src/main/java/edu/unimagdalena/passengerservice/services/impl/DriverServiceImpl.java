@@ -104,7 +104,6 @@ public class DriverServiceImpl implements DriverService {
                 )
                 .flatMap(passenger -> {
                     DriverProfile driver = DriverProfile.builder()
-                            .driverId(passenger.getPassengerId())
                             .licenseNo(licenseNormalized)
                             .carPlate(plateNormalized)
                             .passengerId(passenger.getPassengerId())
@@ -113,12 +112,7 @@ public class DriverServiceImpl implements DriverService {
 
                     return driverRepository.save(driver);
                 })
-                .map(driverMapper::toDriverDto)
-                .onErrorMap(DataIntegrityViolationException.class, ex -> {
-                    return new LicenseInUseException(
-                            "Conflict saving driver: license or plate may already be in use"
-                    );
-                });
+                .map(driverMapper::toDriverDto);
     }
 
     @Override

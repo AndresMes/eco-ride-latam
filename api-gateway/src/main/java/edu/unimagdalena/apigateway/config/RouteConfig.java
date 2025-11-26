@@ -17,20 +17,25 @@ public class RouteConfig {
                         .path("/api/v1/passengers/**")
                         .and()
                         .method("GET", "POST", "PUT", "DELETE")
+                        .filters(f -> f.tokenRelay())  // ← AGREGADO: Token Relay Filter
                         .uri("lb://PASSENGER-SERVICE")
                 )
+
                 // Driver profile management
                 .route("driver-service-route", r -> r
                         .path("/api/v1/drivers/**")
                         .and()
                         .method("GET", "POST", "PUT", "DELETE", "PATCH")
+                        .filters(f -> f.tokenRelay())  // ← AGREGADO
                         .uri("lb://PASSENGER-SERVICE")
                 )
+
                 // Rating system
                 .route("ratings-route", r -> r
                         .path("/api/v1/ratings/**")
                         .and()
                         .method("GET", "POST")
+                        .filters(f -> f.tokenRelay())  // ← AGREGADO
                         .uri("lb://PASSENGER-SERVICE")
                 )
 
@@ -39,20 +44,25 @@ public class RouteConfig {
                         .path("/api/v1/trips/**")
                         .and()
                         .method("GET", "POST", "PUT", "DELETE", "PATCH")
+                        .filters(f -> f.tokenRelay())  // ← AGREGADO
                         .uri("lb://TRIP-SERVICE")
                 )
+
                 .route("trip-search-route", r -> r
                         .path("/api/v1/trips")
                         .and()
                         .method("GET")
                         .and()
                         .query("origin")
+                        .filters(f -> f.tokenRelay())  // ← AGREGADO
                         .uri("lb://TRIP-SERVICE")
                 )
+
                 .route("reservation-service-route", r -> r
                         .path("/api/v1/reservations/**")
                         .and()
                         .method("GET", "POST", "PUT", "DELETE")
+                        .filters(f -> f.tokenRelay())  // ← AGREGADO
                         .uri("lb://TRIP-SERVICE")
                 )
 
@@ -63,24 +73,31 @@ public class RouteConfig {
                         .method("GET", "POST")
                         .and()
                         .header("X-Request-Type", "internal|external")
+                        .filters(f -> f.tokenRelay())  // ← AGREGADO
                         .uri("lb://PAYMENT-SERVICE")
                 )
+
                 .route("payment-intent-route", r -> r
                         .path("/api/v1/payments/intent/**")
                         .and()
                         .method("POST")
+                        .filters(f -> f.tokenRelay())  // ← AGREGADO
                         .uri("lb://PAYMENT-SERVICE")
                 )
+
                 .route("payment-capture-route", r -> r
                         .path("/api/v1/payments/capture/**")
                         .and()
                         .method("POST")
+                        .filters(f -> f.tokenRelay())  // ← AGREGADO
                         .uri("lb://PAYMENT-SERVICE")
                 )
+
                 .route("payment-refund-route", r -> r
                         .path("/api/v1/payments/refund/**")
                         .and()
                         .method("POST")
+                        .filters(f -> f.tokenRelay())  // ← AGREGADO
                         .uri("lb://PAYMENT-SERVICE")
                 )
 
@@ -91,6 +108,7 @@ public class RouteConfig {
                         .method("POST")
                         .and()
                         .header("X-Notification-Type")
+                        .filters(f -> f.tokenRelay())  // ← AGREGADO
                         .uri("lb://NOTIFICATION-SERVICE")
                 )
                 .build();

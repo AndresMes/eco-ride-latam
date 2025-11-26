@@ -1,0 +1,2 @@
+ALTER TABLE passengers
+ALTER COLUMN keycloak_sub DROP NOT NULL;

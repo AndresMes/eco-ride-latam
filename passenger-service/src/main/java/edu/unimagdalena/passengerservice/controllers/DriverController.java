@@ -33,7 +33,7 @@ public class DriverController {
     }
 
     @GetMapping("/{driverId}")
-    @PreAuthorize("hasAnyRole('DRIVER', 'ADMIN', 'PASSENGER')")
+    @PreAuthorize("hasAnyRole('ADMIN')")
     public Mono<ResponseEntity<DriverDtoResponse>> getDriver(@PathVariable Long driverId) {
         return driverService.findDriverById(driverId)
                 .map(ResponseEntity::ok)

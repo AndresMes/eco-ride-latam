@@ -3,7 +3,6 @@ package edu.unimagdalena.apigateway.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
@@ -18,9 +17,13 @@ import java.net.URI;
 public class SecurityConfig {
 
     private final KeycloakJwtAuthenticationConverter jwtAuthenticationConverter;
+    private final SavedRequestAwareAuthenticationSuccessHandler successHandler;
 
-    public SecurityConfig(KeycloakJwtAuthenticationConverter jwtAuthenticationConverter) {
+    public SecurityConfig(
+            KeycloakJwtAuthenticationConverter jwtAuthenticationConverter,
+            SavedRequestAwareAuthenticationSuccessHandler successHandler) {
         this.jwtAuthenticationConverter = jwtAuthenticationConverter;
+        this.successHandler = successHandler;
     }
 
     @Bean
@@ -46,14 +49,9 @@ public class SecurityConfig {
                         )
                 )
 
-                // OAuth2 Login configuration
+                // OAuth2 Login configuration with custom success handler
                 .oauth2Login(oauth2 -> oauth2
-                        .authenticationSuccessHandler((webFilterExchange, authentication) -> {
-                            // Después del login, redirige a la URL original
-                            return webFilterExchange.getExchange()
-                                    .getResponse()
-                                    .setComplete();
-                        })
+                        .authenticationSuccessHandler(successHandler)  // ← CAMBIO AQUÍ
                 )
 
                 // OAuth2 Resource Server - Valida JWT tokens
