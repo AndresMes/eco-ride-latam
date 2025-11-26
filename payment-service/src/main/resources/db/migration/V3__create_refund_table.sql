@@ -33,11 +33,12 @@ CREATE TABLE refund (
 );
 
 -- Índices para mejorar el rendimiento
-CREATE INDEX idx_charge_id ON refund(charge_id);
-CREATE INDEX idx_created_at ON refund(created_at);
-CREATE INDEX idx_reason ON refund(reason);
-CREATE INDEX idx_idempotency_key ON refund(idempotency_key);
-CREATE INDEX idx_processed_at ON refund(processed_at);
+-- NOTA: Cambiados los nombres de los índices para evitar duplicados
+CREATE INDEX idx_refund_charge_id ON refund(charge_id);
+CREATE INDEX idx_refund_created_at ON refund(created_at);
+CREATE INDEX idx_refund_reason ON refund(reason);
+CREATE INDEX idx_refund_idempotency_key ON refund(idempotency_key);
+CREATE INDEX idx_refund_processed_at ON refund(processed_at);
 
 -- Comentarios para documentación
 COMMENT ON TABLE refund IS 'Reembolsos procesados (compensaciones del Saga y solicitudes de clientes)';

@@ -6,8 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreatedDate;
-import org.hibernate.annotations.UpdatedDate;
+
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -58,11 +57,9 @@ public class PaymentIntent {
     @Column(name = "metadata", columnDefinition = "TEXT")
     private String metadata;
 
-    @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @UpdatedDate
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
