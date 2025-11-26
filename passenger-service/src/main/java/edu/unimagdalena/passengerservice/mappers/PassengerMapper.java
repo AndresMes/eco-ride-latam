@@ -14,7 +14,5 @@ public interface PassengerMapper {
 
     PassengerInfoDtoResponse toInfoPassengerDtoResponse(Passenger passenger);
 
-    @Mapping(source = "name", target = "name")
-    @Mapping(source = "email", target="email")
     Passenger toEntity(PassengerDtoRequest dtoRequest);
 }

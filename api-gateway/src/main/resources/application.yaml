@@ -98,11 +98,13 @@ management:
     web:
       exposure:
         include: health,info,metrics,gateway,prometheus
+      base-path: /actuator
   endpoint:
     prometheus:
-      enabled: true
+      access: unrestricted
     health:
-      show-details: when-authorized
+      show-details: always
+      access: unrestricted
     gateway:
       access: read_only
   metrics:
