@@ -5,112 +5,172 @@ import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.ZonedDateTime;
+
 @Configuration
 public class RouteConfig {
 
     @Bean
     public RouteLocator routes(RouteLocatorBuilder builder) {
         return builder.routes()
-                // ==================== PASSENGER SERVICE ROUTES ====================
-                // Passenger profile management
+                // ==================== PASSENGER SERVICE ====================
                 .route("passenger-service-route", r -> r
-                        .path("/api/v1/passengers/**")
+                        .path("/api/passengers/**")
                         .and()
                         .method("GET", "POST", "PUT", "DELETE")
-                        .filters(f -> f.tokenRelay())  // ← AGREGADO: Token Relay Filter
+                        .filters(f -> f
+                                .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
+                                .tokenRelay()
+                        )
                         .uri("lb://PASSENGER-SERVICE")
                 )
 
-                // Driver profile management
                 .route("driver-service-route", r -> r
-                        .path("/api/v1/drivers/**")
+                        .path("/api/drivers/**")
                         .and()
                         .method("GET", "POST", "PUT", "DELETE", "PATCH")
-                        .filters(f -> f.tokenRelay())  // ← AGREGADO
+                        .filters(f -> f
+                                .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
+                                .tokenRelay()
+                        )
                         .uri("lb://PASSENGER-SERVICE")
                 )
 
-                // Rating system
                 .route("ratings-route", r -> r
-                        .path("/api/v1/ratings/**")
+                        .path("/api/ratings/**")
                         .and()
                         .method("GET", "POST")
-                        .filters(f -> f.tokenRelay())  // ← AGREGADO
+                        .filters(f -> f
+                                .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
+                                .tokenRelay()
+                        )
                         .uri("lb://PASSENGER-SERVICE")
                 )
 
-                // ==================== TRIP SERVICE ROUTES ====================
+                // ==================== TRIP SERVICE ====================
                 .route("trip-service-route", r -> r
-                        .path("/api/v1/trips/**")
+                        .path("/api/trips/**")
                         .and()
                         .method("GET", "POST", "PUT", "DELETE", "PATCH")
-                        .filters(f -> f.tokenRelay())  // ← AGREGADO
+                        .filters(f -> f
+                                .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
+                                .addRequestHeader("X-Request-Source", "api-gateway")
+                                .addResponseHeader("X-Gateway", "eco-ride")
+                                .tokenRelay()
+                        )
                         .uri("lb://TRIP-SERVICE")
                 )
 
                 .route("trip-search-route", r -> r
-                        .path("/api/v1/trips")
+                        .path("/api/trips")
                         .and()
                         .method("GET")
                         .and()
                         .query("origin")
-                        .filters(f -> f.tokenRelay())  // ← AGREGADO
+                        .filters(f -> f
+                                .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
+                                .tokenRelay()
+                        )
                         .uri("lb://TRIP-SERVICE")
                 )
 
                 .route("reservation-service-route", r -> r
-                        .path("/api/v1/reservations/**")
+                        .path("/api/reservations/**")
                         .and()
                         .method("GET", "POST", "PUT", "DELETE")
-                        .filters(f -> f.tokenRelay())  // ← AGREGADO
+                        .filters(f -> f
+                                .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
+                                .tokenRelay()
+                        )
                         .uri("lb://TRIP-SERVICE")
                 )
 
-                // ==================== PAYMENT SERVICE ROUTES ====================
+                // ==================== PAYMENT SERVICE ====================
                 .route("payment-service-route", r -> r
-                        .path("/api/v1/payments/**")
+                        .path("/api/payments/**")
                         .and()
                         .method("GET", "POST")
                         .and()
                         .header("X-Request-Type", "internal|external")
-                        .filters(f -> f.tokenRelay())  // ← AGREGADO
+                        .filters(f -> f
+                                .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
+                                .tokenRelay()
+                        )
                         .uri("lb://PAYMENT-SERVICE")
                 )
 
                 .route("payment-intent-route", r -> r
-                        .path("/api/v1/payments/intent/**")
+                        .path("/api/payments/intent/**")
                         .and()
                         .method("POST")
-                        .filters(f -> f.tokenRelay())  // ← AGREGADO
+                        .filters(f -> f
+                                .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
+                                .tokenRelay()
+                        )
                         .uri("lb://PAYMENT-SERVICE")
                 )
 
                 .route("payment-capture-route", r -> r
-                        .path("/api/v1/payments/capture/**")
+                        .path("/api/payments/capture/**")
                         .and()
                         .method("POST")
-                        .filters(f -> f.tokenRelay())  // ← AGREGADO
+                        .filters(f -> f
+                                .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
+                                .tokenRelay()
+                        )
                         .uri("lb://PAYMENT-SERVICE")
                 )
 
                 .route("payment-refund-route", r -> r
-                        .path("/api/v1/payments/refund/**")
+                        .path("/api/payments/refund/**")
                         .and()
                         .method("POST")
-                        .filters(f -> f.tokenRelay())  // ← AGREGADO
+                        .filters(f -> f
+                                .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
+                                .tokenRelay()
+                        )
                         .uri("lb://PAYMENT-SERVICE")
                 )
 
-                // ==================== NOTIFICATION SERVICE ROUTES ====================
+                // ==================== NOTIFICATION SERVICE ====================
                 .route("notification-service-route", r -> r
-                        .path("/api/v1/notifications/**")
+                        .path("/api/notifications/**")
                         .and()
                         .method("POST")
                         .and()
                         .header("X-Notification-Type")
-                        .filters(f -> f.tokenRelay())  // ← AGREGADO
+                        .filters(f -> f
+                                .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
+                                .tokenRelay()
+                        )
                         .uri("lb://NOTIFICATION-SERVICE")
                 )
+
+                // ==================== AFTER/BEFORE PREDICATES ====================
+                .route("maintenance-route", r -> r
+                        .path("/api/maintenance/**")
+                        .and()
+                        .after(ZonedDateTime.parse("2025-01-01T00:00:00Z"))
+                        .filters(f -> f
+                                .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
+                                .addResponseHeader("X-Maintenance-Status", "Endpoint de mantenimiento")
+                                .tokenRelay()
+                        )
+                        .uri("lb://TRIP-SERVICE")
+                )
+
+                .route("beta-route", r -> r
+                        .path("/api/beta/**")
+                        .and()
+                        .before(ZonedDateTime.parse("2025-12-31T23:59:59Z"))
+                        .filters(f -> f
+                                .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
+                                .addResponseHeader("X-Beta-Status", "Endpoint de beta")
+                                .tokenRelay()
+                        )
+                        .uri("lb://TRIP-SERVICE")
+                )
+
                 .build();
     }
 }
