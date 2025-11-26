@@ -2,14 +2,17 @@ server:
   port: 8080
 
 spring:
+<<<<<<< Updated upstream
+=======
   data:
     redis:
-      host: localhost
+      host: ${REDIS_HOST:localhost}
       port: 6379
       timeout: 2000ms
       # Configuración adicional para debugging
       connect-timeout: 5000ms
 
+>>>>>>> Stashed changes
   application:
     name: api-gateway
 
@@ -46,12 +49,11 @@ spring:
       client:
         provider:
           keycloak:
-            issuer-uri: http://localhost:9090/realms/ecoride
-            authorization-uri: http://localhost:9090/realms/ecoride/protocol/openid-connect/auth
-            token-uri: http://localhost:9090/realms/ecoride/protocol/openid-connect/token
-            user-info-uri: http://localhost:9090/realms/ecoride/protocol/openid-connect/userinfo
-            jwk-set-uri: http://localhost:9090/realms/ecoride/protocol/openid-connect/certs
-            user-name-attribute: preferred_username
+            issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:9090/realms/ecoride}
+            authorization-uri: ${KEYCLOAK_AUTH_URI:http://localhost:9090/realms/ecoride/protocol/openid-connect/auth}
+            token-uri: ${KEYCLOAK_TOKEN_URI:http://localhost:9090/realms/ecoride/protocol/openid-connect/token}
+            user-info-uri: ${KEYCLOAK_USERINFO_URI:http://localhost:9090/realms/ecoride/protocol/openid-connect/userinfo}
+            jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:9090/realms/ecoride/protocol/openid-connect/certs}
 
         registration:
           eco-gateway:
@@ -78,8 +80,8 @@ spring:
 
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:9090/realms/ecoride
-          jwk-set-uri: http://localhost:9090/realms/ecoride/protocol/openid-connect/certs
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:9090/realms/ecoride}
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:9090/realms/ecoride/protocol/openid-connect/certs}
 
 eureka:
   instance:
@@ -90,7 +92,7 @@ eureka:
     register-with-eureka: true
     fetch-registry: true
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
     registry-fetch-interval-seconds: 5
 
 management:
