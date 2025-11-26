@@ -97,13 +97,22 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,gateway
+        include: health,info,metrics,gateway,prometheus
   endpoint:
+    prometheus:
+      enabled: true
     health:
       show-details: when-authorized
     gateway:
       access: read_only
+  metrics:
+    enable:
+      root: true
+      gateway: true
 
+  observations:
+    key-values:
+      application: api-gateway
 logging:
   level:
     root: INFO
