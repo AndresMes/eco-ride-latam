@@ -22,7 +22,7 @@ public class PassengerClient {
 
     public Mono<PassengerDto> findPassengerById(String passengerId, @Nullable String authorizationHeader) {
         return webClient.get()
-                .uri("http://passenger-service/passengers/{id}", passengerId)
+                .uri("http://PASSENGER-SERVICE/passengers/{id}", passengerId)
                 .headers(h -> {
                     if (authorizationHeader != null && !authorizationHeader.isBlank()) {
                         h.set(HttpHeaders.AUTHORIZATION, authorizationHeader);
