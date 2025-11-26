@@ -17,6 +17,7 @@ import edu.unimagdalena.tripservice.repositories.ReservationRepository;
 import edu.unimagdalena.tripservice.repositories.TripRepository;
 import edu.unimagdalena.tripservice.services.ReservationService;
 import edu.unimagdalena.tripservice.services.TripService;
+import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -105,7 +106,7 @@ public class TripServiceImpl implements TripService {
 
     @Override
     @Transactional
-    public Mono<ReservationCreatedDtoResponse> createReservationInTrip(Long tripId, ReservationDtoRequest reservationDtoRequest) {
+    public Mono<ReservationCreatedDtoResponse> createReservationInTrip(Long tripId, ReservationDtoRequest reservationDtoRequest, @Nullable String authorizationHeader) {
         return tripRepository.findById(tripId)
                 .switchIfEmpty(Mono.error(new TripNotFoundException("Trip with ID: " + tripId + " not found")))
                 .flatMap(trip -> {
@@ -119,7 +120,7 @@ public class TripServiceImpl implements TripService {
                                                 if (Boolean.TRUE.equals(exists)) {
                                                     return Mono.error(new ReservationAlreadyExistsException("Passenger already reserved this trip"));
                                                 }
-                                                return reservationService.createReservation(tripId, reservationDtoRequest);
+                                                return reservationService.createReservation(tripId, reservationDtoRequest, authorizationHeader);
                                             })
                             );
                 });
