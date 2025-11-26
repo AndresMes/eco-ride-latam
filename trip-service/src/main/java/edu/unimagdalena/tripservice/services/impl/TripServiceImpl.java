@@ -1,5 +1,6 @@
 package edu.unimagdalena.tripservice.services.impl;
 
+import edu.unimagdalena.tripservice.clients.PassengerClient;
 import edu.unimagdalena.tripservice.dtos.requests.ReservationDtoRequest;
 import edu.unimagdalena.tripservice.dtos.requests.TripDtoRequest;
 import edu.unimagdalena.tripservice.dtos.responses.ReservationCreatedDtoResponse;
@@ -11,12 +12,14 @@ import edu.unimagdalena.tripservice.events.TripCompletedEvent;
 import edu.unimagdalena.tripservice.events.publisher.TripEventPublisher;
 import edu.unimagdalena.tripservice.exceptions.ReservationAlreadyExistsException;
 import edu.unimagdalena.tripservice.exceptions.TripStatusUpdateNotAllowedException;
+import edu.unimagdalena.tripservice.exceptions.notFound.DriverNotFoundException;
 import edu.unimagdalena.tripservice.exceptions.notFound.TripNotFoundException;
 import edu.unimagdalena.tripservice.mappers.TripMapper;
 import edu.unimagdalena.tripservice.repositories.ReservationRepository;
 import edu.unimagdalena.tripservice.repositories.TripRepository;
 import edu.unimagdalena.tripservice.services.ReservationService;
 import edu.unimagdalena.tripservice.services.TripService;
+import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +36,7 @@ public class TripServiceImpl implements TripService {
     private final TripMapper tripMapper;
     private final ReservationService reservationService;
     private final ReservationRepository reservationRepository;
+    private final PassengerClient passengerClient;
     private final TripEventPublisher tripEventPublisher;
 
     @Override
@@ -59,13 +63,22 @@ public class TripServiceImpl implements TripService {
 
     @Override
     @Transactional
-    public Mono<TripDtoResponse> createTrip(TripDtoRequest dtoRequest) {
+    public Mono<TripDtoResponse> createTrip(TripDtoRequest dtoRequest, @Nullable String authorizationHeader) {
+
         Trip tripEntity = tripMapper.toEntity(dtoRequest);
         tripEntity.setStatus(StatusTrip.SCHEDULED);
 
         return tripRepository.save(tripEntity)
+                .flatMap(trip ->
+                        passengerClient.findDriverById(dtoRequest.driverId(), authorizationHeader)
+                                .switchIfEmpty(Mono.error(
+                                        new DriverNotFoundException("Driver with ID " + dtoRequest.driverId() + " not found")
+                                ))
+                                .thenReturn(trip)
+                )
                 .map(tripMapper::toDtoResponse);
     }
+
 
     @Override
     @Transactional
@@ -105,7 +118,7 @@ public class TripServiceImpl implements TripService {
 
     @Override
     @Transactional
-    public Mono<ReservationCreatedDtoResponse> createReservationInTrip(Long tripId, ReservationDtoRequest reservationDtoRequest) {
+    public Mono<ReservationCreatedDtoResponse> createReservationInTrip(Long tripId, ReservationDtoRequest reservationDtoRequest, @Nullable String authorizationHeader) {
         return tripRepository.findById(tripId)
                 .switchIfEmpty(Mono.error(new TripNotFoundException("Trip with ID: " + tripId + " not found")))
                 .flatMap(trip -> {
@@ -119,7 +132,7 @@ public class TripServiceImpl implements TripService {
                                                 if (Boolean.TRUE.equals(exists)) {
                                                     return Mono.error(new ReservationAlreadyExistsException("Passenger already reserved this trip"));
                                                 }
-                                                return reservationService.createReservation(tripId, reservationDtoRequest);
+                                                return reservationService.createReservation(tripId, reservationDtoRequest, authorizationHeader);
                                             })
                             );
                 });

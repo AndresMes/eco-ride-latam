@@ -5,6 +5,7 @@ import edu.unimagdalena.tripservice.dtos.requests.TripDtoRequest;
 import edu.unimagdalena.tripservice.dtos.requests.TripDtoUpdateStatus;
 import edu.unimagdalena.tripservice.dtos.responses.ReservationCreatedDtoResponse;
 import edu.unimagdalena.tripservice.dtos.responses.TripDtoResponse;
+import jakarta.annotation.Nullable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -23,11 +24,11 @@ public interface TripService {
             LocalDateTime to
     );
 
-    Mono<TripDtoResponse> createTrip(TripDtoRequest dtoRequest);
+    Mono<TripDtoResponse> createTrip(TripDtoRequest dtoRequest, @Nullable String authorizationHeader);
 
     Mono<TripDtoResponse> updateTrip(Long id, TripDtoRequest dtoRequest);
 
     Mono<TripDtoResponse> updateTripStatus(Long id, TripDtoUpdateStatus newStatus);
 
-    Mono<ReservationCreatedDtoResponse> createReservationInTrip(Long tripId, ReservationDtoRequest reservationDtoRequest);
+    Mono<ReservationCreatedDtoResponse> createReservationInTrip(Long tripId, ReservationDtoRequest reservationDtoRequest, @Nullable String authorizationHeader);
 }

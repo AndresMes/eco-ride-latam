@@ -1,10 +1,154 @@
+server:
+  port: 8080
+
 spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
+      # Configuración adicional para debugging
+      connect-timeout: 5000ms
+
   application:
     name: api-gateway
 
+  cloud:
+    config:
+      enabled: false
+
+    gateway:
+      server:
+        webflux:
+          discovery:
+            locator:
+              enabled: false
+              lower-case-service-id: true
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowed-origins: '*'
+                allowed-methods:
+                  - GET
+                  - POST
+                  - PUT
+                  - DELETE
+                  - PATCH
+                  - OPTIONS
+                allowed-headers: '*'
+                allow-credentials: false
+          httpclient:
+            connect-timeout: 3000
+            response-timeout: 5s
+
+  security:
+    oauth2:
+      client:
+        provider:
+          keycloak:
+            issuer-uri: http://localhost:9090/realms/ecoride
+            authorization-uri: http://localhost:9090/realms/ecoride/protocol/openid-connect/auth
+            token-uri: http://localhost:9090/realms/ecoride/protocol/openid-connect/token
+            user-info-uri: http://localhost:9090/realms/ecoride/protocol/openid-connect/userinfo
+            jwk-set-uri: http://localhost:9090/realms/ecoride/protocol/openid-connect/certs
+            user-name-attribute: preferred_username
+
+        registration:
+          eco-gateway:
+            provider: keycloak
+            client-id: eco-gateway
+            client-secret: pQlnipuGsGAEVwUxdYMCRNJOqvRRdjge
+            authorization-grant-type: authorization_code
+            redirect-uri: "http://localhost:8080/login/oauth2/code/eco-gateway"
+            scope:
+              - openid
+              - profile
+              - email
+
+          eco-internal:
+            provider: keycloak
+            client-id: eco-gateway
+            client-secret: pQlnipuGsGAEVwUxdYMCRNJOqvRRdjge
+            authorization-grant-type: client_credentials
+            scope:
+              - notification:send
+              - payment:charge
+              - trips:read
+              - trips:write
+
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:9090/realms/ecoride
+          jwk-set-uri: http://localhost:9090/realms/ecoride/protocol/openid-connect/certs
+
 eureka:
-  client:
-    service-url:
-      default-zone: http://localhost:8761/eureka
   instance:
-    instance-id: "${spring.application.name}:${spring.application.instance_id:${random.value}}"
+    hostname: localhost
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+    prefer-ip-address: false
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    registry-fetch-interval-seconds: 5
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway
+  endpoint:
+    health:
+      show-details: when-authorized
+    gateway:
+      access: read_only
+
+logging:
+  level:
+    root: INFO
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.security.oauth2: DEBUG
+    org.springframework.security.web: DEBUG
+    reactor.netty: INFO
+    io.github.resilience4j.circuitbreaker: DEBUG
+    # IMPORTANTE: Activar logs de rate limiter
+    org.springframework.cloud.gateway.filter.ratelimit: DEBUG
+    org.springframework.data.redis: DEBUG
+
+resilience4j:
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: 5s
+        cancel-running-future: false
+    instances:
+      trip-service:
+        base-config: default
+      passenger-service:
+        base-config: default
+      payment-service:
+        timeout-duration: 10s
+      notification-service:
+        timeout-duration: 3s
+
+  circuitbreaker:
+    configs:
+      default:
+        failure-rate-threshold: 50
+        minimum-number-of-calls: 10
+        permitted-number-of-calls-in-half-open-state: 5
+        wait-duration-in-open-state: 10s
+        sliding-window-size: 10
+        sliding-window-type: COUNT_BASED
+        register-health-indicator: true
+    instances:
+      trip-service:
+        base-config: default
+      passenger-service:
+        base-config: default
+      payment-service:
+        base-config: default
+      notification-service:
+        base-config: default

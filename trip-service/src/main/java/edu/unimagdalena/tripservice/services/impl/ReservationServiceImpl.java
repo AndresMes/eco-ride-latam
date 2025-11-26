@@ -1,5 +1,6 @@
 package edu.unimagdalena.tripservice.services.impl;
 
+import edu.unimagdalena.tripservice.clients.PassengerClient;
 import edu.unimagdalena.tripservice.dtos.requests.ReservationDtoRequest;
 import edu.unimagdalena.tripservice.dtos.responses.ReservationCreatedDtoResponse;
 import edu.unimagdalena.tripservice.dtos.responses.ReservationDtoResponse;
@@ -18,6 +19,7 @@ import edu.unimagdalena.tripservice.mappers.ReservationMapper;
 import edu.unimagdalena.tripservice.repositories.ReservationRepository;
 import edu.unimagdalena.tripservice.repositories.TripRepository;
 import edu.unimagdalena.tripservice.services.ReservationService;
+import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,24 +37,26 @@ public class ReservationServiceImpl implements ReservationService {
     private final ReservationMapper reservationMapper;
     private final ReservationEventPublisher reservationEventPublisher;
     private final NotificationEventPublisher notificationEventPublisher;
+    private final PassengerClient passengerClient;
 
     @Override
     @Transactional
-    public Mono<ReservationCreatedDtoResponse> createReservation(Long tripId, ReservationDtoRequest dtoRequest) {
+    public Mono<ReservationCreatedDtoResponse> createReservation(Long tripId, ReservationDtoRequest dtoRequest, @Nullable String authorizationHeader) {
         return tripRepository.findById(tripId)
                 .switchIfEmpty(Mono.error(new TripNotFoundException("Trip with ID: " + tripId + " not found")))
-                .flatMap(trip -> {
-                    // TODO: Implement validation of passengerId (same place as original comment)
+                .flatMap(trip ->
+                        passengerClient.findPassengerById(dtoRequest.passengerId(), authorizationHeader)
+                                .then(Mono.defer(() -> {
+                                    Reservation reservation = reservationMapper.toEntity(dtoRequest);
+                                    reservation.setStatus(StatusReservation.PENDING);
+                                    reservation.setTripId(trip.getTripId());
+                                    reservation.setCreatedAt(LocalDateTime.now());
 
-                    Reservation reservation = reservationMapper.toEntity(dtoRequest);
-                    reservation.setStatus(StatusReservation.PENDING);
-                    reservation.setTripId(trip.getTripId());
-                    reservation.setCreatedAt(LocalDateTime.now());
-
-                    return reservationRepository.save(reservation)
-                            .doOnSuccess(saved -> publishReservationRequestedEvent(saved, trip))
-                            .map(reservationMapper::toCreatedDtoResponse);
-                });
+                                    return reservationRepository.save(reservation)
+                                            .doOnSuccess(saved -> publishReservationRequestedEvent(saved, trip))
+                                            .map(reservationMapper::toCreatedDtoResponse);
+                                }))
+                );
     }
 
     @Override

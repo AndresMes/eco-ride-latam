@@ -18,25 +18,22 @@ public class PaymentEventListener {
 
     @RabbitListener(queues = "${ecoride.rabbitmq.queues.payment-authorized}")
     public void handlePaymentAuthorized(PaymentAuthorizedEvent event){
-        try{
-            reservationService.confirmReservation(
-                    event.getReservationId(),
-                    event.getPaymentIntentId()
-            );
-        } catch (Exception e) {
-            throw new PaymentException("Error processing PaymentAuthorized for reservation: "+event.getReservationId());
-        }
+        log.info("Received PaymentAuthorizedEvent for reservationId={}", event.getReservationId());
+
+        reservationService.confirmReservation(event.getReservationId(), event.getPaymentIntentId())
+                .doOnSuccess(unused -> log.info("Reservation {} confirmed successfully", event.getReservationId()))
+                .doOnError(err -> log.error("Failed to confirm reservation {}: {}", event.getReservationId(), err.getMessage(), err))
+                // Suscribirse para que el flujo se ejecute:
+                .subscribe();
     }
 
     @RabbitListener(queues = "${ecoride.rabbitmq.queues.payment-failed}")
     public void handlePaymentFailed(PaymentFailedEvent event){
-        try{
-            reservationService.cancelReservation(
-                    event.getReservationId(),
-                    event.getReason()
-            );
-        } catch (Exception e) {
-            throw new PaymentException("Error processing PaymentFailed for reservation: " + event.getEventId());
-        }
+        log.info("Received PaymentFailedEvent for reservationId={}", event.getReservationId());
+
+        reservationService.cancelReservation(event.getReservationId(), event.getReason())
+                .doOnSuccess(unused -> log.info("Reservation {} cancelled successfully", event.getReservationId()))
+                .doOnError(err -> log.error("Failed to cancel reservation {}: {}", event.getReservationId(), err.getMessage(), err))
+                .subscribe();
     }
 }

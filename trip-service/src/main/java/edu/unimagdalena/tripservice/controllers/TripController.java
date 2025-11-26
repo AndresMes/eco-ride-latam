@@ -9,6 +9,7 @@ import edu.unimagdalena.tripservice.services.TripService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -39,7 +40,6 @@ public class TripController {
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Optional<LocalDateTime> to
     ) {
-        // El servicio acepta nulls para indicar "sin filtro"
         return tripService.searchTrips(
                 origin.orElse(null),
                 destination.orElse(null),
@@ -55,29 +55,31 @@ public class TripController {
     }
 
     @PostMapping
-    public Mono<ResponseEntity<TripDtoResponse>> createTrip(@Valid @RequestBody TripDtoRequest dtoRequest){
-        return tripService.createTrip(dtoRequest)
+    public Mono<ResponseEntity<TripDtoResponse>> createTrip(@Valid @RequestBody TripDtoRequest dtoRequest,
+                                                            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader){
+        return tripService.createTrip(dtoRequest, authorizationHeader)
                 .map(created -> ResponseEntity.status(HttpStatus.CREATED).body(created));
     }
 
     @PostMapping("/{tripId}/reservations")
     public Mono<ResponseEntity<ReservationCreatedDtoResponse>> createReservationInTrip(
             @PathVariable Long tripId,
-            @Valid @RequestBody ReservationDtoRequest dto
-    ){
-        return tripService.createReservationInTrip(tripId, dto)
+            @Valid @RequestBody ReservationDtoRequest dto,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader) {
+
+        return tripService.createReservationInTrip(tripId, dto, authorizationHeader)
                 .map(created -> ResponseEntity.status(HttpStatus.CREATED).body(created));
     }
 
     @PutMapping("/{id}")
     public Mono<ResponseEntity<TripDtoResponse>> updateTrip(@PathVariable Long id, @Valid @RequestBody TripDtoRequest dtoRequest){
         return tripService.updateTrip(id, dtoRequest)
-                .map(updated -> ResponseEntity.ok(updated));
+                .map(ResponseEntity::ok);
     }
 
     @PatchMapping("/{id}/status")
     public Mono<ResponseEntity<TripDtoResponse>> updateTripStatus(@PathVariable Long id, @Valid @RequestBody TripDtoUpdateStatus dtoUpdateStatus){
         return tripService.updateTripStatus(id, dtoUpdateStatus)
-                .map(updated -> ResponseEntity.ok(updated));
+                .map(ResponseEntity::ok);
     }
 }

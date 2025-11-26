@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS passengers (
 
 -- Tabla driver_profiles
 CREATE TABLE IF NOT EXISTS driver_profiles (
-    driver_id BIGINT PRIMARY KEY,
+    driver_id BIGSERIAL PRIMARY KEY,
     license_no VARCHAR(255) NOT NULL UNIQUE,
     car_plate VARCHAR(255) NOT NULL,
     verification_status VARCHAR(50),
