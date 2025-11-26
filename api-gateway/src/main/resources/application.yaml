@@ -2,6 +2,11 @@ server:
   port: 8080
 
 spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
   application:
     name: api-gateway
 
@@ -32,9 +37,14 @@ spring:
                           allow-credentials: false
           default-filters:
             - TokenRelay
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                key-resolver: "#{@ipKeyResolver}"
           httpclient:
-            connect-timeout: 5000
-            response-timeout: 10s
+            connect-timeout: 3000
+            response-timeout: 5s
 
   security:
     oauth2:
@@ -111,3 +121,51 @@ logging:
     org.springframework.security.oauth2: DEBUG
     org.springframework.security.web: DEBUG
     reactor.netty: INFO
+    io.github.resilience4j.circuitbreaker: DEBUG
+    org.springframework.cloud.gateway.filter.ratelimit: DEBUG
+
+#Resilience4j
+resilience4j:
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: 5s
+        cancel-running-future: false
+    instances:
+      trip-service:
+        base-config: default
+      passenger-service:
+        base-config: default
+      payment-service:
+        timeout-duration: 10s
+      notification-duration:
+        timeout-duration: 3s
+
+  circuitbreaker:
+    configs:
+      default:
+        # Umbral de fallo para abrir el circuito
+        failure-rate-threshold: 50
+        # Llamadas mínimas antes de calcular failure rate
+        minimum-number-of-calls: 10
+        # Número de llamadas en estado HALF_OPEN
+        permitted-number-of-calls-in-half-open-state: 5
+        # Tiempo en OPEN antes de ir a HALF_OPEN
+        wait-duration-in-open-state: 10s
+        # Tamaño de sliding window
+        sliding-window-size: 10
+        sliding-window-type: COUNT_BASED
+        # Registrar eventos
+        register-health-indicator: true
+    instances:
+      trip-service:
+        base-config: default
+      passenger-service:
+        base-config: default
+      payment-service:
+        base-config: default
+      notification-service:
+        base-config: default
+
+
+

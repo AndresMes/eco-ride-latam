@@ -20,7 +20,12 @@ public class RouteConfig {
                         .method("GET", "POST", "PUT", "DELETE")
                         .filters(f -> f
                                 .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
+                                .circuitBreaker(c -> c
+                                        .setName("passenger-service")
+                                        .setFallbackUri("forward:/fallback/passenger-service")
+                                )
                                 .tokenRelay()
+                                .requestRateLimiter().and()
                         )
                         .uri("lb://PASSENGER-SERVICE")
                 )
@@ -31,7 +36,12 @@ public class RouteConfig {
                         .method("GET", "POST", "PUT", "DELETE", "PATCH")
                         .filters(f -> f
                                 .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
+                                .circuitBreaker(c -> c
+                                        .setName("passenger-service")
+                                        .setFallbackUri("forward:/fallback/passenger-service")
+                                )
                                 .tokenRelay()
+                                .requestRateLimiter().and()
                         )
                         .uri("lb://PASSENGER-SERVICE")
                 )
@@ -42,7 +52,12 @@ public class RouteConfig {
                         .method("GET", "POST")
                         .filters(f -> f
                                 .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
+                                .circuitBreaker(c -> c
+                                        .setName("passenger-service")
+                                        .setFallbackUri("forward:/fallback/passenger-service")
+                                )
                                 .tokenRelay()
+                                .requestRateLimiter().and()
                         )
                         .uri("lb://PASSENGER-SERVICE")
                 )
@@ -56,7 +71,12 @@ public class RouteConfig {
                                 .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
                                 .addRequestHeader("X-Request-Source", "api-gateway")
                                 .addResponseHeader("X-Gateway", "eco-ride")
+                                .circuitBreaker(c -> c
+                                        .setName("trip-service")
+                                        .setFallbackUri("forward:/fallback/trip-service")
+                                )
                                 .tokenRelay()
+                                .requestRateLimiter().and()
                         )
                         .uri("lb://TRIP-SERVICE")
                 )
@@ -69,7 +89,12 @@ public class RouteConfig {
                         .query("origin")
                         .filters(f -> f
                                 .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
+                                .circuitBreaker(c -> c
+                                        .setName("trip-service")
+                                        .setFallbackUri("forward:/fallback/trip-service")
+                                )
                                 .tokenRelay()
+                                .requestRateLimiter().and()
                         )
                         .uri("lb://TRIP-SERVICE")
                 )
@@ -80,6 +105,10 @@ public class RouteConfig {
                         .method("GET", "POST", "PUT", "DELETE")
                         .filters(f -> f
                                 .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
+                                .circuitBreaker(c -> c
+                                        .setName("trip-service")
+                                        .setFallbackUri("forward:/fallback/trip-service")
+                                )
                                 .tokenRelay()
                         )
                         .uri("lb://TRIP-SERVICE")
@@ -94,7 +123,12 @@ public class RouteConfig {
                         .header("X-Request-Type", "internal|external")
                         .filters(f -> f
                                 .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
+                                .circuitBreaker(c -> c
+                                        .setName("payment-service")
+                                        .setFallbackUri("forward:/fallback/payment-service")
+                                )
                                 .tokenRelay()
+                                .requestRateLimiter().and()
                         )
                         .uri("lb://PAYMENT-SERVICE")
                 )
@@ -105,7 +139,12 @@ public class RouteConfig {
                         .method("POST")
                         .filters(f -> f
                                 .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
+                                .circuitBreaker(c -> c
+                                        .setName("payment-service")
+                                        .setFallbackUri("forward:/fallback/payment-service")
+                                )
                                 .tokenRelay()
+                                .requestRateLimiter().and()
                         )
                         .uri("lb://PAYMENT-SERVICE")
                 )
@@ -116,7 +155,12 @@ public class RouteConfig {
                         .method("POST")
                         .filters(f -> f
                                 .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
+                                .circuitBreaker(c -> c
+                                        .setName("payment-service")
+                                        .setFallbackUri("forward:/fallback/payment-service")
+                                )
                                 .tokenRelay()
+                                .requestRateLimiter().and()
                         )
                         .uri("lb://PAYMENT-SERVICE")
                 )
@@ -127,7 +171,12 @@ public class RouteConfig {
                         .method("POST")
                         .filters(f -> f
                                 .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
+                                .circuitBreaker(c -> c
+                                        .setName("payment-service")
+                                        .setFallbackUri("forward:/fallback/payment-service")
+                                )
                                 .tokenRelay()
+                                .requestRateLimiter().and()
                         )
                         .uri("lb://PAYMENT-SERVICE")
                 )
@@ -141,9 +190,26 @@ public class RouteConfig {
                         .header("X-Notification-Type")
                         .filters(f -> f
                                 .rewritePath("/api/(?<segment>.*)", "/api/v1/${segment}")
+                                .circuitBreaker(c -> c
+                                        .setName("notification-service")
+                                        .setFallbackUri("forward:/fallback/notification-service")
+                                )
                                 .tokenRelay()
                         )
                         .uri("lb://NOTIFICATION-SERVICE")
+                )
+
+                // ==================== TEST ROUTE (para probar timeout/circuit breaker) ====================
+                .route("test-route", r -> r
+                        .path("/api/test/**")
+                        .filters(f -> f
+                                .rewritePath("/api/test/(?<segment>.*)", "/test/${segment}")
+                                .circuitBreaker(c -> c
+                                        .setName("trip-service")
+                                        .setFallbackUri("forward:/fallback/trip-service")
+                                )
+                        )
+                        .uri("http://localhost:8080")  // Loopback al mismo gateway
                 )
 
                 // ==================== AFTER/BEFORE PREDICATES ====================
