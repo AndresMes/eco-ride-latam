@@ -15,6 +15,7 @@ import edu.unimagdalena.tripservice.exceptions.ReservationStatusNotAllowedToChan
 import edu.unimagdalena.tripservice.exceptions.notFound.ReservationNotFoundException;
 import edu.unimagdalena.tripservice.exceptions.notFound.TripNotFoundException;
 import edu.unimagdalena.tripservice.mappers.ReservationMapper;
+import edu.unimagdalena.tripservice.metrics.TripMetricsConfig;
 import edu.unimagdalena.tripservice.repositories.ReservationRepository;
 import edu.unimagdalena.tripservice.repositories.TripRepository;
 import edu.unimagdalena.tripservice.services.ReservationService;
@@ -35,6 +36,8 @@ public class ReservationServiceImpl implements ReservationService {
     private final ReservationMapper reservationMapper;
     private final ReservationEventPublisher reservationEventPublisher;
     private final NotificationEventPublisher notificationEventPublisher;
+    private final TripMetricsConfig metrics;
+
 
     @Override
     @Transactional
@@ -44,15 +47,25 @@ public class ReservationServiceImpl implements ReservationService {
                 .flatMap(trip -> {
                     // TODO: Implement validation of passengerId (same place as original comment)
 
-                    Reservation reservation = reservationMapper.toEntity(dtoRequest);
-                    reservation.setStatus(StatusReservation.PENDING);
-                    reservation.setTripId(trip.getTripId());
-                    reservation.setCreatedAt(LocalDateTime.now());
+                    Reservation reservation = Reservation.builder()
+                            .passengerId(dtoRequest.passengerId())
+                            .tripId(tripId)
+                            .status(StatusReservation.PENDING)  // O el estado inicial correcto
+                            .createdAt(LocalDateTime.now())
+                            .build();
 
                     return reservationRepository.save(reservation)
-                            .doOnSuccess(saved -> publishReservationRequestedEvent(saved, trip))
-                            .map(reservationMapper::toCreatedDtoResponse);
+                            .map(saved -> new ReservationCreatedDtoResponse(
+                                    saved.getReservationId(),
+                                    saved.getTripId(),
+                                    saved.getPassengerId(),
+                                    saved.getStatus(),
+                                    saved.getCreatedAt()
+                            )).doOnSuccess(save-> {metrics.incrementReservationsCreated();});
                 });
+
+
+
     }
 
     @Override

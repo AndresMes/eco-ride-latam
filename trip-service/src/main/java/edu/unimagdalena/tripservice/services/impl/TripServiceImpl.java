@@ -13,6 +13,7 @@ import edu.unimagdalena.tripservice.exceptions.ReservationAlreadyExistsException
 import edu.unimagdalena.tripservice.exceptions.TripStatusUpdateNotAllowedException;
 import edu.unimagdalena.tripservice.exceptions.notFound.TripNotFoundException;
 import edu.unimagdalena.tripservice.mappers.TripMapper;
+import edu.unimagdalena.tripservice.metrics.TripMetricsConfig;
 import edu.unimagdalena.tripservice.repositories.ReservationRepository;
 import edu.unimagdalena.tripservice.repositories.TripRepository;
 import edu.unimagdalena.tripservice.services.ReservationService;
@@ -34,6 +35,8 @@ public class TripServiceImpl implements TripService {
     private final ReservationService reservationService;
     private final ReservationRepository reservationRepository;
     private final TripEventPublisher tripEventPublisher;
+    private final TripMetricsConfig metrics;
+
 
     @Override
     public Mono<TripDtoResponse> getTripById(Long id) {
@@ -64,7 +67,7 @@ public class TripServiceImpl implements TripService {
         tripEntity.setStatus(StatusTrip.SCHEDULED);
 
         return tripRepository.save(tripEntity)
-                .map(tripMapper::toDtoResponse);
+                .map(tripMapper::toDtoResponse).doOnSuccess(saved->{metrics.incrementTripsCreated();});
     }
 
     @Override
