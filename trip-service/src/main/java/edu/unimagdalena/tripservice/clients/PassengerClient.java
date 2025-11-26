@@ -20,6 +20,29 @@ public class PassengerClient {
         this.webClient = lbWebClientBuilder.build();
     }
 
+    public Mono<PassengerDto> findDriverById(Long driverId, @Nullable String authorizationHeader) {
+        return webClient.get()
+                .uri("http://PASSENGER-SERVICE/drivers/{driverId}", driverId)
+                .headers(h -> {
+                    if (authorizationHeader != null && !authorizationHeader.isBlank()) {
+                        h.set(HttpHeaders.AUTHORIZATION, authorizationHeader);
+                    }
+                })
+                .retrieve()
+                .onStatus(status -> status.value() == 404,
+                        response -> Mono.error(new PassengerNotFoundException("Driver " + driverId + " not found")))
+                .onStatus(status -> status.is4xxClientError(),
+                        response -> response.bodyToMono(String.class)
+                                .defaultIfEmpty("")
+                                .flatMap(body -> Mono.error(new RuntimeException("Passenger service 4xx: " + body))))
+                .onStatus(status -> status.is5xxServerError(),
+                        response -> response.bodyToMono(String.class)
+                                .defaultIfEmpty("")
+                                .flatMap(body -> Mono.error(new RuntimeException("Passenger service 5xx: " + body))))
+                .bodyToMono(PassengerDto.class)
+                .timeout(java.time.Duration.ofSeconds(3));
+    }
+
     public Mono<PassengerDto> findPassengerById(String passengerId, @Nullable String authorizationHeader) {
         return webClient.get()
                 .uri("http://PASSENGER-SERVICE/passengers/{id}", passengerId)

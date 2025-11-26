@@ -55,8 +55,9 @@ public class TripController {
     }
 
     @PostMapping
-    public Mono<ResponseEntity<TripDtoResponse>> createTrip(@Valid @RequestBody TripDtoRequest dtoRequest){
-        return tripService.createTrip(dtoRequest)
+    public Mono<ResponseEntity<TripDtoResponse>> createTrip(@Valid @RequestBody TripDtoRequest dtoRequest,
+                                                            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader){
+        return tripService.createTrip(dtoRequest, authorizationHeader)
                 .map(created -> ResponseEntity.status(HttpStatus.CREATED).body(created));
     }
 

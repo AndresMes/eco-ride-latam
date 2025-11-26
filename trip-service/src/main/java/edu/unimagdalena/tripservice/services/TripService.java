@@ -24,7 +24,7 @@ public interface TripService {
             LocalDateTime to
     );
 
-    Mono<TripDtoResponse> createTrip(TripDtoRequest dtoRequest);
+    Mono<TripDtoResponse> createTrip(TripDtoRequest dtoRequest, @Nullable String authorizationHeader);
 
     Mono<TripDtoResponse> updateTrip(Long id, TripDtoRequest dtoRequest);
 
