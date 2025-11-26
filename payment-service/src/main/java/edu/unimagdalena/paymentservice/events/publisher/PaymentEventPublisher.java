@@ -1,6 +1,5 @@
 package edu.unimagdalena.paymentservice.events.publisher;
 
-
 import edu.unimagdalena.paymentservice.events.PaymentAuthorizedEvent;
 import edu.unimagdalena.paymentservice.events.PaymentFailedEvent;
 import lombok.RequiredArgsConstructor;
@@ -9,12 +8,13 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Component
+
 @Slf4j
+@Component
 @RequiredArgsConstructor
 public class PaymentEventPublisher {
 
@@ -23,31 +23,46 @@ public class PaymentEventPublisher {
     @Value("${ecoride.rabbitmq.exchanges.payment}")
     private String paymentExchange;
 
-    @Value("${ecoride.rabbitmq.routing-keys.payment-failed}")
-    private String paymentFailedRoutingKey;
-
     @Value("${ecoride.rabbitmq.routing-keys.payment-authorized}")
     private String paymentAuthorizedRoutingKey;
 
+    @Value("${ecoride.rabbitmq.routing-keys.payment-failed}")
+    private String paymentFailedRoutingKey;
 
     public Mono<Void> publishPaymentAuthorized(PaymentAuthorizedEvent event) {
-        if (event.getEventId() == null) event.setEventId(UUID.randomUUID().toString());
         return Mono.fromRunnable(() -> {
-                    rabbitTemplate.convertAndSend(paymentExchange, paymentAuthorizedRoutingKey, event);
+            try {
+                event.setEventId(UUID.randomUUID().toString());
+                event.setTimestamp(LocalDateTime.now());
 
-                })
-                .subscribeOn(Schedulers.boundedElastic())
-                .then();
+                rabbitTemplate.convertAndSend(
+                        paymentExchange,
+                        paymentAuthorizedRoutingKey,
+                        event
+                );
+
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to publish PaymentAuthorizedEvent", e);
+            }
+        });
     }
 
     public Mono<Void> publishPaymentFailed(PaymentFailedEvent event) {
-        if (event.getEventId() == null) event.setEventId(UUID.randomUUID().toString());
         return Mono.fromRunnable(() -> {
-                    rabbitTemplate.convertAndSend(paymentExchange, paymentFailedRoutingKey, event);
-                })
-                .subscribeOn(Schedulers.boundedElastic())
-                .then();
+            try {
+                event.setEventId(UUID.randomUUID().toString());
+                event.setTimestamp(LocalDateTime.now());
+
+                rabbitTemplate.convertAndSend(
+                        paymentExchange,
+                        paymentFailedRoutingKey,
+                        event
+                );
+
+
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to publish PaymentFailedEvent", e);
+            }
+        });
     }
-
-
 }
