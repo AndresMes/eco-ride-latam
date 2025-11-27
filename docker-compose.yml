@@ -1,0 +1,291 @@
+services:
+  # ============================================================
+  # INFRAESTRUCTURA
+  # ============================================================
+
+  # PostgreSQL para Trip Service
+  postgres-trip:
+    image: postgres:15-alpine
+    container_name: postgres-trip
+    environment:
+      POSTGRES_DB: tripService
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-trip-data:/var/lib/postgresql/data
+    networks:
+      - ecoride-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL para Passenger Service
+  postgres-passenger:
+    image: postgres:15-alpine
+    container_name: postgres-passenger
+    environment:
+      POSTGRES_DB: passengerService
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres-passenger-data:/var/lib/postgresql/data
+    networks:
+      - ecoride-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL para Payment Service
+  postgres-payment:
+    image: postgres:15-alpine
+    container_name: postgres-payment
+    environment:
+      POSTGRES_DB: paymentService
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres-payment-data:/var/lib/postgresql/data
+    networks:
+      - ecoride-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # RabbitMQ
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - ecoride-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis (para API Gateway - rate limiting)
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - ecoride-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Keycloak
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4.6
+    container_name: keycloak
+    command: start-dev
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HTTP_PORT: 8080
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
+      KC_HTTP_ENABLED: true
+    ports:
+      - "9090:8080"
+    networks:
+      - ecoride-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ============================================================
+  # MICROSERVICIOS
+  # ============================================================
+
+  # Eureka Server (Service Discovery)
+  eureka-server:
+    build:
+      context: ./eureka-server
+      dockerfile: Dockerfile
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    networks:
+      - ecoride-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8761/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER-URI: http://keycloak:8080/realms/ecoride
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER-URI: http://keycloak:8080/realms/ecoride
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK-SET-URI: http://keycloak:8080/realms/ecoride/protocol/openid-connect/certs
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ecoride-network
+    restart: on-failure
+
+  # Trip Service
+  trip-service:
+    build:
+      context: ./trip-service
+      dockerfile: Dockerfile
+    container_name: trip-service
+    ports:
+      - "8081:8081"
+    environment:
+      EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE: http://eureka-server:8761/eureka
+      SPRING_R2DBC_URL: r2dbc:postgresql://postgres-trip:5432/tripService
+      SPRING_R2DBC_USERNAME: postgres
+      SPRING_R2DBC_PASSWORD: 123456
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-trip:5432/tripService
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: 123456
+      SPRING_FLYWAY_URL: jdbc:postgresql://postgres-trip:5432/tripService
+      SPRING_FLYWAY_USER: postgres
+      SPRING_FLYWAY_PASSWORD: 123456
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER-URI: http://keycloak:8080/realms/ecoride
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK-SET-URI: http://keycloak:8080/realms/ecoride/protocol/openid-connect/certs
+    depends_on:
+      postgres-trip:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    networks:
+      - ecoride-network
+    restart: on-failure
+
+  # Passenger Service
+  passenger-service:
+    build:
+      context: ./passenger-service
+      dockerfile: Dockerfile
+    container_name: passenger-service
+    ports:
+      - "8082:8082"
+    environment:
+      EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE: http://eureka-server:8761/eureka
+      SPRING_R2DBC_URL: r2dbc:postgresql://postgres-passenger:5432/passengerService
+      SPRING_R2DBC_USERNAME: postgres
+      SPRING_R2DBC_PASSWORD: 123456
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-passenger:5432/passengerService
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: 123456
+      SPRING_FLYWAY_URL: jdbc:postgresql://postgres-passenger:5432/passengerService
+      SPRING_FLYWAY_USER: postgres
+      SPRING_FLYWAY_PASSWORD: 123456
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER-URI: http://keycloak:8080/realms/ecoride
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK-SET-URI: http://keycloak:8080/realms/ecoride/protocol/openid-connect/certs
+    depends_on:
+      postgres-passenger:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    networks:
+      - ecoride-network
+    restart: on-failure
+
+  # Payment Service
+  payment-service:
+    build:
+      context: ./payment-service
+      dockerfile: Dockerfile
+    container_name: payment-service
+    ports:
+      - "8083:8083"
+    environment:
+      EUREKA_CLIENT_SERVICE-URL_DEFAULTZONE: http://eureka-server:8761/eureka
+      SPRING_R2DBC_URL: r2dbc:postgresql://postgres-payment:5432/paymentService
+      SPRING_R2DBC_USERNAME: postgres
+      SPRING_R2DBC_PASSWORD: 123456
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-payment:5432/paymentService
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: 123456
+      SPRING_FLYWAY_URL: jdbc:postgresql://postgres-payment:5432/paymentService
+      SPRING_FLYWAY_USER: postgres
+      SPRING_FLYWAY_PASSWORD: 123456
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
+    depends_on:
+      postgres-payment:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - ecoride-network
+    restart: on-failure
+
+# ============================================================
+# NETWORKS
+# ============================================================
+networks:
+  ecoride-network:
+    driver: bridge
+
+# ============================================================
+# VOLUMES
+# ============================================================
+volumes:
+  postgres-trip-data:
+  postgres-passenger-data:
+  postgres-payment-data:
+  rabbitmq-data:
+  redis-data:
