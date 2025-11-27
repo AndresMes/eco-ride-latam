@@ -223,7 +223,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         return Mono.delay(Duration.ofSeconds(1))
                 .flatMap(delay -> {
-                    boolean success = random.nextInt(100) < 70; //random.nextInt(100) < 70 false
+                    boolean success = false; //random.nextInt(100) < 70 false
 
                     if (success) {
                         String providerRef = "MOCK_" + UUID.randomUUID().toString();

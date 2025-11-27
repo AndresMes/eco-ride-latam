@@ -49,7 +49,7 @@ public class PassengerClient {
 
     public Mono<PassengerDto> findDriverById(Long driverId, @Nullable String authorizationHeader) {
         return webClient.get()
-                .uri("http://PASSENGER-SERVICE/api/v1/drivers/me", driverId)
+                .uri("http://PASSENGER-SERVICE/api/v1/passengers/me", driverId)
                 .headers(h -> {
                     if (authorizationHeader != null && !authorizationHeader.isBlank()) {
                         h.set(HttpHeaders.AUTHORIZATION, authorizationHeader);
